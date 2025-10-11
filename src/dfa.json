@@ -1,0 +1,138 @@
+{
+  "character_classes": {
+    "letter": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "digit": "0123456789",
+    "whitespace": " \t\n\r"
+  },
+  "start_state": "S_START",
+  "final_states": {
+    "S_IDENTIFIER": "IDENTIFIER",
+    "S_INTEGER": "NUMBER",
+    "S_REAL_FRAC": "NUMBER",
+    "S_REAL_EXP_SIGNED": "NUMBER",
+    "S_REAL_EXP_DIGIT": "NUMBER",
+    "S_STRING_QUOTE_END": "STRING_LITERAL",
+    "S_ASSIGN": "ASSIGN_OPERATOR",
+    "S_PLUS": "ARITHMETIC_OPERATOR",
+    "S_MINUS": "ARITHMETIC_OPERATOR",
+    "S_STAR": "ARITHMETIC_OPERATOR",
+    "S_SLASH": "ARITHMETIC_OPERATOR",
+    "S_EQUAL": "RELATIONAL_OPERATOR",
+    "S_NOT_EQUAL": "RELATIONAL_OPERATOR",
+    "S_LESS": "RELATIONAL_OPERATOR",
+    "S_LESS_EQUAL": "RELATIONAL_OPERATOR",
+    "S_GREATER": "RELATIONAL_OPERATOR",
+    "S_GREATER_EQUAL": "RELATIONAL_OPERATOR",
+    "S_SEMICOLON": "SEMICOLON",
+    "S_COMMA": "COMMA",
+    "S_COLON": "COLON",
+    "S_DOT": "DOT",
+    "S_RANGE": "RANGE_OPERATOR",
+    "S_LPAREN": "LPARENTHESIS",
+    "S_RPAREN": "RPARENTHESIS",
+    "S_LBRACKET": "LBRACKET",
+    "S_RBRACKET": "RBRACKET",
+    "S_COMMENT_BLOCK_END": "COMMENT",
+    "S_COMMENT_LINE_END": "COMMENT"
+  },
+  "transitions": {
+    "S_START": {
+      "letter": "S_IDENTIFIER",
+      "digit": "S_INTEGER",
+      "'": "S_STRING_CONTENT",
+      "{": "S_COMMENT_BLOCK_CONTENT",
+      ":": "S_COLON",
+      "<": "S_LESS",
+      ">": "S_GREATER",
+      ".": "S_DOT",
+      "(": "S_LPAREN",
+      ")": "S_RPAREN",
+      "[": "S_LBRACKET",
+      "]": "S_RBRACKET",
+      ";": "S_SEMICOLON",
+      ",": "S_COMMA",
+      "=": "S_EQUAL",
+      "+": "S_PLUS",
+      "-": "S_MINUS",
+      "*": "S_STAR",
+      "/": "S_SLASH"
+    },
+    "S_IDENTIFIER": {
+      "letter": "S_IDENTIFIER",
+      "digit": "S_IDENTIFIER"
+    },
+    "S_INTEGER": {
+      "digit": "S_INTEGER",
+      ".": "S_REAL_DOT",
+      "E": "S_REAL_EXP"
+    },
+    "S_REAL_DOT": {
+      "digit": "S_REAL_FRAC"
+    },
+    "S_REAL_FRAC": {
+      "digit": "S_REAL_FRAC",
+      "E": "S_REAL_EXP"
+    },
+    "S_REAL_EXP": {
+      "+": "S_REAL_EXP_SIGNED",
+      "-": "S_REAL_EXP_SIGNED",
+      "digit": "S_REAL_EXP_DIGIT"
+    },
+    "S_REAL_EXP_SIGNED": {
+      "digit": "S_REAL_EXP_DIGIT"
+    },
+    "S_REAL_EXP_DIGIT": {
+      "digit": "S_REAL_EXP_DIGIT"
+    },
+    "S_STRING_CONTENT": {
+      "'": "S_STRING_QUOTE_END",
+      "any_except_'": "S_STRING_CONTENT"
+    },
+    "S_STRING_QUOTE_END": {},
+    "S_COMMENT_BLOCK_CONTENT": {
+      "}": "S_COMMENT_BLOCK_END",
+      "any_except_}": "S_COMMENT_BLOCK_CONTENT"
+    },
+    "S_COMMENT_BLOCK_END": {},
+    "S_LPAREN": {
+      "*": "S_COMMENT_LINE_CONTENT"
+    },
+    "S_COMMENT_LINE_CONTENT": {
+      "*": "S_COMMENT_LINE_STAR_END",
+      "any_except_*": "S_COMMENT_LINE_CONTENT"
+    },
+    "S_COMMENT_LINE_STAR_END": {
+      ")": "S_COMMENT_LINE_END",
+      "any_except_)": "S_COMMENT_LINE_CONTENT"
+    },
+    "S_COMMENT_LINE_END": {},
+    "S_COLON": {
+      "=": "S_ASSIGN"
+    },
+    "S_LESS": {
+      "=": "S_LESS_EQUAL",
+      ">": "S_NOT_EQUAL"
+    },
+    "S_GREATER": {
+      "=": "S_GREATER_EQUAL"
+    },
+    "S_DOT": {
+      ".": "S_RANGE"
+    },
+    "S_ASSIGN": {},
+    "S_PLUS": {},
+    "S_MINUS": {},
+    "S_STAR": {},
+    "S_SLASH": {},
+    "S_EQUAL": {},
+    "S_NOT_EQUAL": {},
+    "S_LESS_EQUAL": {},
+    "S_GREATER_EQUAL": {},
+    "S_SEMICOLON": {},
+    "S_COMMA": {},
+    "S_RANGE": {},
+    "S_RPAREN": {},
+    "S_LBRACKET": {},
+    "S_RBRACKET": {}
+  }
+}
