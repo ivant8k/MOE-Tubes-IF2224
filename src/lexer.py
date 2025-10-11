@@ -58,47 +58,60 @@ class Lexer:
         line = 1
         column = 1
 
+        # Main Loop: Memproses semua karakter sampai karakter habis
         while position < len(source_code):
-            
             char = source_code[position]
+            # Jika karakter adalah whitespace, lewati dan perbarui posisi
             if char in self.char_classes.get('whitespace', ''):
                 if char == '\n':
+                    # Jika newline, perbarui baris dan kolom
                     line += 1
                     column = 1
                 else:
+                    # Jika spasi atau tab, cukup perbarui kolom
                     column += 1
                 position += 1
-                continue
+                continue # Lanjut ke iterasi berikutnya untuk karakter selanjutnya
 
+            # Mulai dari state awal DFA
             current_state = self.start_state
             current_lexeme = ""
-            last_match = None
+            last_match = None # Menyimpan token terakhir yang valid
             
             start_line, start_col = line, column
 
+            # Pointer sementara untuk simulasi DFA dan pointer utama tidak akan diubah sampai ketemu satu token utuh
             temp_pos = position
-            temp_line, temp_col = line, column
+            temp_line, temp_col = line, column 
 
+            # Inner Loop: Simulasi DFA untuk menemukan token terpanjang
             while True: 
+                # Cek apakah EOF?
                 if temp_pos >= len(source_code):
+                    # Error handling untuk string atau komentar yang tidak ditutup
                     if current_state in ["S_STRING_CONTENT", "S_STRING_QUOTE_END"]:
                         raise LexicalError("Unterminated string literal", start_line, start_col)
                     if current_state in ["S_COMMENT_BLOCK_CONTENT", "S_COMMENT_BLOCK_STAR_END", "S_COMMENT_LINE_CONTENT"]:
                         raise LexicalError("Unterminated comment", start_line, start_col)
                     break
 
+                # Ambil karakter dan tentukan kelasnya
                 char = source_code[temp_pos]
                 char_class = self._get_char_class(char)
                 
                 next_state = None
                 
+                # Pencarian transisi DFA
                 if current_state in self.transitions:
                     possible_transitions = self.transitions[current_state]
+                    # Prioritas 1: Apakah ada aturan untuk kelas karakter karakter
                     if char_class in possible_transitions:
                         next_state = possible_transitions[char_class]
+                    # Prioritas 2: Apakah ada aturan untuk karakter literal
                     elif char in possible_transitions:
                         next_state = possible_transitions[char]
                     else:
+                        # Prioritas 3: Cek aturan khusus seperti "any_except_..."
                         for rule, target_state in possible_transitions.items():
                             if rule.startswith("any_except_"):
                                 excluded_chars = rule.split('_')[-1]
@@ -106,10 +119,12 @@ class Lexer:
                                     next_state = target_state
                                     break
                 
+                # Pemrosesan hasil transisi
                 if next_state:
                     current_state = next_state
                     current_lexeme += char
                     
+                    # Majukan pointer sementara
                     if char == '\n':
                         temp_line += 1
                         temp_col = 1
@@ -117,29 +132,38 @@ class Lexer:
                         temp_col += 1
                     temp_pos += 1
 
+                    # Jika sudah state final, simpan token di last_match
                     if current_state in self.final_states:
                         last_match = (current_lexeme, self.final_states[current_state], temp_line, temp_col)
                 else:
+                    # Jika tidak ada transisi yang valid, keluar dari loop
                     break
             
+            # Finalisasi token setelah inner loop
             if last_match:
+                # Jika last_match ada, berarti kita menemukan token valid
                 lexeme, token_type, end_line, end_col = last_match
                 
                 if token_type == "IDENTIFIER":
+                    # Jika token adalah identifier, cek apakah itu keyword atau reserved word (div, mod, dll)
                     lexeme_lower = lexeme.lower()
                     if lexeme_lower in self.keywords:
                         token_type = "KEYWORD"
                     elif lexeme_lower in self.reserved_operators:
                         token_type = self.reserved_operators[lexeme_lower]
                 
+                # Jika token adalah komentar, abaikan (tidak dimasukkan ke daftar token)
                 if token_type != "COMMENT":
                     tokens.append((token_type, lexeme))
                 
+                # Perbarui posisi utama ke posisi setelah token yang ditemukan
                 position += len(lexeme)
+                # Perbarui baris dan kolom utama
                 line, column = end_line, end_col
             else:
+                # Jika tidak ada token valid yang ditemukan, lempar error
                 raise LexicalError(f"Invalid character '{source_code[position]}'", line, column)
-        
+        # return daftar token yang ditemukan
         return tokens
 
 def main():
