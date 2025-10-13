@@ -144,6 +144,11 @@ class Lexer:
                 # Jika last_match ada, berarti kita menemukan token valid
                 lexeme, token_type, end_line, end_col = last_match
                 
+                # Handle STRING_LITERAL dan CHAR_LITERAL
+                if token_type == "STRING_LITERAL":
+                    if len(lexeme) == 3:
+                        token_type = "CHAR_LITERAL"
+
                 if token_type == "IDENTIFIER":
                     # Jika token adalah identifier, cek apakah itu keyword atau reserved word (div, mod, dll)
                     lexeme_lower = lexeme.lower()
