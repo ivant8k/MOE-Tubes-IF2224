@@ -27,19 +27,9 @@ class Lexer:
         self.transitions = self.dfa['transitions']
         self.char_classes = self.dfa['character_classes']
         
-        # Daftar keywords dan reserved words (dalam lowercase)
-        self.keywords = {
-            "program", "var", "begin", "end", "if", "then", "else", "while", 
-            "do", "for", "to", "downto", "integer", "real", "boolean", "char", 
-            "array", "of", "procedure", "function", "const", "type"
-        }
-        self.reserved_operators = {
-            "div": "ARITHMETIC_OPERATOR",
-            "mod": "ARITHMETIC_OPERATOR",
-            "and": "LOGICAL_OPERATOR",
-            "or": "LOGICAL_OPERATOR",
-            "not": "LOGICAL_OPERATOR"
-        }
+        # Daftar keywords dan reserved words dari DFA (dalam lowercase)
+        self.keywords = self.dfa.get('keywords', {})
+        self.reserved_operators = self.dfa.get('reserved_operators', {})
 
     def _get_char_class(self, char):
         """Mendapatkan kelas karakter (letter, digit, dll.) dari sebuah karakter."""
@@ -144,16 +134,11 @@ class Lexer:
                 # Jika last_match ada, berarti kita menemukan token valid
                 lexeme, token_type, end_line, end_col = last_match
                 
-                # Handle STRING_LITERAL dan CHAR_LITERAL
-                if token_type == "STRING_LITERAL":
-                    if len(lexeme) == 3:
-                        token_type = "CHAR_LITERAL"
-
                 if token_type == "IDENTIFIER":
-                    # Jika token adalah identifier, cek apakah itu keyword atau reserved word (div, mod, dll)
+                    # Jika token adalah identifier, cek apakah itu keyword atau reserved word menggunakan DFA mapping
                     lexeme_lower = lexeme.lower()
                     if lexeme_lower in self.keywords:
-                        token_type = "KEYWORD"
+                        token_type = self.keywords[lexeme_lower]
                     elif lexeme_lower in self.reserved_operators:
                         token_type = self.reserved_operators[lexeme_lower]
                 

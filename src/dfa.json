@@ -4,6 +4,37 @@
     "digit": "0123456789",
     "whitespace": " \t\n\r"
   },
+  "keywords": {
+    "program": "KEYWORD",
+    "var": "KEYWORD",
+    "begin": "KEYWORD",
+    "end": "KEYWORD",
+    "if": "KEYWORD",
+    "then": "KEYWORD",
+    "else": "KEYWORD",
+    "while": "KEYWORD",
+    "do": "KEYWORD",
+    "for": "KEYWORD",
+    "to": "KEYWORD",
+    "downto": "KEYWORD",
+    "integer": "KEYWORD",
+    "real": "KEYWORD",
+    "boolean": "KEYWORD",
+    "char": "KEYWORD",
+    "array": "KEYWORD",
+    "of": "KEYWORD",
+    "procedure": "KEYWORD",
+    "function": "KEYWORD",
+    "const": "KEYWORD",
+    "type": "KEYWORD"
+  },
+  "reserved_operators": {
+    "div": "ARITHMETIC_OPERATOR",
+    "mod": "ARITHMETIC_OPERATOR",
+    "and": "LOGICAL_OPERATOR",
+    "or": "LOGICAL_OPERATOR",
+    "not": "LOGICAL_OPERATOR"
+  },
   "start_state": "S_START",
   "final_states": {
     "S_IDENTIFIER": "IDENTIFIER",
@@ -11,7 +42,9 @@
     "S_REAL_FRAC": "NUMBER",
     "S_REAL_EXP_SIGNED": "NUMBER",
     "S_REAL_EXP_DIGIT": "NUMBER",
+    "S_CHAR_QUOTE_END": "CHAR_LITERAL",
     "S_STRING_QUOTE_END": "STRING_LITERAL",
+    "S_EMPTY_STRING_END": "STRING_LITERAL",
     "S_ASSIGN": "ASSIGN_OPERATOR",
     "S_PLUS": "ARITHMETIC_OPERATOR",
     "S_MINUS": "ARITHMETIC_OPERATOR",
@@ -39,7 +72,7 @@
     "S_START": {
       "letter": "S_IDENTIFIER",
       "digit": "S_INTEGER",
-      "'": "S_STRING_CONTENT",
+      "'": "S_STRING_CHAR_START",
       "{": "S_COMMENT_BLOCK_CONTENT",
       ":": "S_COLON",
       "<": "S_LESS",
@@ -84,11 +117,21 @@
     "S_REAL_EXP_DIGIT": {
       "digit": "S_REAL_EXP_DIGIT"
     },
+    "S_STRING_CHAR_START": {
+      "'": "S_EMPTY_STRING_END",
+      "any_except_'": "S_STRING_CHAR_CONTENT"
+    },
+    "S_STRING_CHAR_CONTENT": {
+      "'": "S_CHAR_QUOTE_END",
+      "any_except_'": "S_STRING_CONTENT"
+    },
     "S_STRING_CONTENT": {
       "'": "S_STRING_QUOTE_END",
       "any_except_'": "S_STRING_CONTENT"
     },
+    "S_CHAR_QUOTE_END": {},
     "S_STRING_QUOTE_END": {},
+    "S_EMPTY_STRING_END": {},
     "S_COMMENT_BLOCK_CONTENT": {
       "}": "S_COMMENT_BLOCK_END",
       "any_except_}": "S_COMMENT_BLOCK_CONTENT"
