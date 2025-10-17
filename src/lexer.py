@@ -156,20 +156,24 @@ class Lexer:
 def main():
     """
     Fungsi utama untuk menjalankan lexer.
-    Membutuhkan tepat 2 argumen: file input (.pas) dan file output (.txt).
+    Dapat menerima 1 argumen (output ke terminal) atau 2 argumen (output ke file):
+    - python lexer.py input.pas -> output ke terminal
+    - python lexer.py input.pas output.txt -> output ke file
     """
-    if len(sys.argv) != 3:
-        print("Usage: python src/lexer.py <source_file_path.pas> <output_file_path.txt>", file=sys.stderr)
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
+        print("Usage:", file=sys.stderr)
+        print("  python lexer.py <source_file_path.pas> -> output ke terminal", file=sys.stderr)
+        print("  python lexer.py <source_file_path.pas> <output_file_path.txt> -> output ke file", file=sys.stderr)
         sys.exit(1)
 
     source_file_path = sys.argv[1]
-    output_file_path = sys.argv[2]
+    output_file_path = sys.argv[2] if len(sys.argv) == 3 else None
 
     if not source_file_path.lower().endswith('.pas'):
         print(f"Input Error: Source file harus memiliki ekstensi .pas. Diberikan: '{source_file_path}'", file=sys.stderr)
         sys.exit(1)
         
-    if not output_file_path.lower().endswith('.txt'):
+    if output_file_path and not output_file_path.lower().endswith('.txt'):
         print(f"Output Error: Output file harus memiliki ekstensi .txt. Diberikan: '{output_file_path}'", file=sys.stderr)
         sys.exit(1)
 
@@ -188,15 +192,23 @@ def main():
     try:
         tokens = lexer.tokenize(source_code)
         
-        output_dir = os.path.dirname(output_file_path)
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
+        if output_file_path:
+            # Output ke file
+            output_dir = os.path.dirname(output_file_path)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+                
+            with open(output_file_path, 'w') as f:
+                for token_type, lexeme in tokens:
+                    f.write(f"{token_type}({lexeme})\n")
             
-        with open(output_file_path, 'w') as f:
+            print(f"Tokenization successful. Output written to '{output_file_path}'")
+        else:
+            # Output ke terminal
+            print("Tokenization successful. Daftar token:")
+            print("=" * 40)
             for token_type, lexeme in tokens:
-                f.write(f"{token_type}({lexeme})\n")
-        
-        print(f"Tokenization successful. Output written to '{output_file_path}'")
+                print(f"{token_type}({lexeme})")
 
     except LexicalError as e:
         print(str(e), file=sys.stderr)
