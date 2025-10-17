@@ -1,5 +1,5 @@
 program Hello;
-
+{TEST KOMENTAR}
 var
   a, b: integer;
 

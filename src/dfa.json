@@ -96,14 +96,16 @@
     "S_INTEGER": {
       "digit": "S_INTEGER",
       ".": "S_REAL_DOT",
-      "E": "S_REAL_EXP"
+      "E": "S_REAL_EXP",
+      "e": "S_REAL_EXP"
     },
     "S_REAL_DOT": {
       "digit": "S_REAL_FRAC"
     },
     "S_REAL_FRAC": {
       "digit": "S_REAL_FRAC",
-      "E": "S_REAL_EXP"
+      "E": "S_REAL_EXP",
+      "e": "S_REAL_EXP"
     },
     "S_REAL_EXP": {
       "+": "S_REAL_EXP_SIGNED",

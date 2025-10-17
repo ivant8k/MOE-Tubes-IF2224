@@ -62,6 +62,40 @@ class Lexer:
                     column += 1
                 position += 1
                 continue # Lanjut ke iterasi berikutnya untuk karakter selanjutnya
+            
+            # Handle komentar blok { ... }
+            if char == '{':
+                position += 1
+                column += 1
+                while position < len(source_code) and source_code[position] != '}':
+                    if source_code[position] == '\n':
+                        line += 1
+                        column = 1
+                    else:
+                        column += 1
+                    position += 1
+                # Skip closing }
+                if position < len(source_code):
+                    position += 1
+                    column += 1
+                continue
+            
+            # Handle komentar line (* ... *)
+            if char == '(' and position + 1 < len(source_code) and source_code[position + 1] == '*':
+                position += 2
+                column += 2
+                while position + 1 < len(source_code):
+                    if source_code[position] == '*' and source_code[position + 1] == ')':
+                        position += 2
+                        column += 2
+                        break
+                    if source_code[position] == '\n':
+                        line += 1
+                        column = 1
+                    else:
+                        column += 1
+                    position += 1
+                continue
 
             # Mulai dari state awal DFA
             current_state = self.start_state
