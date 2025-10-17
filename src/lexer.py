@@ -78,11 +78,9 @@ class Lexer:
             while True: 
                 # Cek apakah EOF?
                 if temp_pos >= len(source_code):
-                    # Error handling untuk string atau komentar yang tidak ditutup
+                    # Error handling untuk string yang tidak ditutup
                     if current_state in ["S_STRING_CONTENT", "S_STRING_QUOTE_END"]:
                         raise LexicalError("Unterminated string literal", start_line, start_col)
-                    if current_state in ["S_COMMENT_BLOCK_CONTENT", "S_COMMENT_BLOCK_STAR_END", "S_COMMENT_LINE_CONTENT"]:
-                        raise LexicalError("Unterminated comment", start_line, start_col)
                     break
 
                 # Ambil karakter dan tentukan kelasnya
@@ -142,9 +140,8 @@ class Lexer:
                     elif lexeme_lower in self.reserved_operators:
                         token_type = self.reserved_operators[lexeme_lower]
                 
-                # Jika token adalah komentar, abaikan (tidak dimasukkan ke daftar token)
-                if token_type != "COMMENT":
-                    tokens.append((token_type, lexeme))
+                # Tambahkan token ke daftar token
+                tokens.append((token_type, lexeme))
                 
                 # Perbarui posisi utama ke posisi setelah token yang ditemukan
                 position += len(lexeme)

@@ -1,6 +1,6 @@
 program Almost;
 var
-  a: integer; (* Lupa tanda ')'
+  a: integer;
 begin
   a := 1;
 end.

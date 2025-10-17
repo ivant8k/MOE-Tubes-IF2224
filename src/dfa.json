@@ -66,16 +66,13 @@
     "S_LPAREN": "LPARENTHESIS",
     "S_RPAREN": "RPARENTHESIS",
     "S_LBRACKET": "LBRACKET",
-    "S_RBRACKET": "RBRACKET",
-    "S_COMMENT_BLOCK_END": "COMMENT",
-    "S_COMMENT_LINE_END": "COMMENT"
+    "S_RBRACKET": "RBRACKET"
   },
   "transitions": {
     "S_START": {
       "letter": "S_IDENTIFIER",
       "digit": "S_INTEGER",
       "'": "S_STRING_CHAR_START",
-      "{": "S_COMMENT_BLOCK_CONTENT",
       ":": "S_COLON",
       "<": "S_LESS",
       ">": "S_GREATER",
@@ -134,23 +131,6 @@
     "S_CHAR_QUOTE_END": {},
     "S_STRING_QUOTE_END": {},
     "S_EMPTY_STRING_END": {},
-    "S_COMMENT_BLOCK_CONTENT": {
-      "}": "S_COMMENT_BLOCK_END",
-      "any_except_}": "S_COMMENT_BLOCK_CONTENT"
-    },
-    "S_COMMENT_BLOCK_END": {},
-    "S_LPAREN": {
-      "*": "S_COMMENT_LINE_CONTENT"
-    },
-    "S_COMMENT_LINE_CONTENT": {
-      "*": "S_COMMENT_LINE_STAR_END",
-      "any_except_*": "S_COMMENT_LINE_CONTENT"
-    },
-    "S_COMMENT_LINE_STAR_END": {
-      ")": "S_COMMENT_LINE_END",
-      "any_except_)": "S_COMMENT_LINE_CONTENT"
-    },
-    "S_COMMENT_LINE_END": {},
     "S_COLON": {
       "=": "S_ASSIGN"
     },

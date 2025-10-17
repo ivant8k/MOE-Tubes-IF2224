@@ -1,6 +1,4 @@
-program BadComment;
-{ Ini adalah komentar yang panjang dan
-  sangat informatif, tapi sayang sekali
-  penulisnya lupa menutupnya.
+program BadExponent;
 begin
+  x := 1.2E#5;
 end.
