@@ -30,6 +30,9 @@ class Lexer:
         # Daftar keywords dan reserved words dari DFA (dalam lowercase)
         self.keywords = self.dfa.get('keywords', {})
         self.reserved_operators = self.dfa.get('reserved_operators', {})
+        
+        # Daftar keyword yang mengandung tanda hubung (hyphen)
+        self.hyphenated_keywords = {'selain-itu', 'turun-ke'}
 
     def _get_char_class(self, char):
         """Mendapatkan kelas karakter (letter, digit, dll.) dari sebuah karakter."""
@@ -37,6 +40,45 @@ class Lexer:
             if char in chars:
                 return class_name
         return char
+
+    def _merge_hyphenated_keywords(self, tokens):
+        """
+        Post-processing untuk menggabungkan token yang membentuk keyword ber-hyphen.
+        Menggabungkan urutan: IDENTIFIER/KEYWORD + ARITHMETIC_OPERATOR('-') + IDENTIFIER/KEYWORD
+        menjadi satu KEYWORD jika hasilnya adalah 'selain-itu' atau 'turun-ke'.
+        
+        Args:
+            tokens: List of (token_type, lexeme) tuples
+            
+        Returns:
+            List of (token_type, lexeme) tuples dengan keyword ber-hyphen yang sudah digabung
+        """
+        merged_tokens = []
+        i = 0
+        
+        while i < len(tokens):
+            # Cek apakah ada pola: token1 + '-' + token2
+            if (i + 2 < len(tokens) and
+                tokens[i][0] in ['IDENTIFIER', 'KEYWORD'] and
+                tokens[i + 1][0] == 'ARITHMETIC_OPERATOR' and
+                tokens[i + 1][1] == '-' and
+                tokens[i + 2][0] in ['IDENTIFIER', 'KEYWORD']):
+                
+                # Bentuk kandidat keyword dengan menggabungkan lexeme
+                candidate = (tokens[i][1] + '-' + tokens[i + 2][1]).lower()
+                
+                # Jika kandidat adalah keyword ber-hyphen yang valid
+                if candidate in self.hyphenated_keywords:
+                    # Gabungkan menjadi satu token KEYWORD
+                    merged_tokens.append(('KEYWORD', candidate))
+                    i += 3  # Skip tiga token yang sudah digabung
+                    continue
+            
+            # Jika bukan pola keyword ber-hyphen, tambahkan token seperti biasa
+            merged_tokens.append(tokens[i])
+            i += 1
+        
+        return merged_tokens
 
     def tokenize(self, source_code):
         """
@@ -184,6 +226,10 @@ class Lexer:
             else:
                 # Jika tidak ada token valid yang ditemukan, lempar error
                 raise LexicalError(f"Invalid character '{source_code[position]}'", line, column)
+        
+        # Post-processing: Gabungkan keyword ber-hyphen seperti "selain-itu" dan "turun-ke"
+        tokens = self._merge_hyphenated_keywords(tokens)
+        
         # return daftar token yang ditemukan
         return tokens
 
