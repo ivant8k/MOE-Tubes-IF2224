@@ -1,17 +1,19 @@
 import json
 import sys
 import os
+from typing import List
+from models import Token, TokenType, Lexeme
 
 class LexicalError(Exception):
     """Custom exception untuk error leksikal."""
-    def __init__(self, message, line, column):
+    def __init__(self, message:str, line:int, column:int) -> None:
         super().__init__(f"Lexical Error on line {line}, column {column}: {message}")
         self.message = message
         self.line = line
         self.column = column
 
 class Lexer:
-    def __init__(self, dfa_rules_path):
+    def __init__(self, dfa_rules_path:str) -> None:
         """
         Inisialisasi lexer dengan memuat aturan DFA dari file JSON.
         """
@@ -34,14 +36,14 @@ class Lexer:
         # Daftar keyword yang mengandung tanda hubung (hyphen)
         self.hyphenated_keywords = {'selain-itu', 'turun-ke'}
 
-    def _get_char_class(self, char):
+    def _get_char_class(self, char:str):
         """Mendapatkan kelas karakter (letter, digit, dll.) dari sebuah karakter."""
         for class_name, chars in self.char_classes.items():
             if char in chars:
                 return class_name
         return char
 
-    def _merge_hyphenated_keywords(self, tokens):
+    def _merge_hyphenated_keywords(self, tokens:List[Token]) -> List[Token]:
         """
         Post-processing untuk menggabungkan token yang membentuk keyword ber-hyphen.
         Menggabungkan urutan: IDENTIFIER/KEYWORD + ARITHMETIC_OPERATOR('-') + IDENTIFIER/KEYWORD
@@ -59,18 +61,18 @@ class Lexer:
         while i < len(tokens):
             # Cek apakah ada pola: token1 + '-' + token2
             if (i + 2 < len(tokens) and
-                tokens[i][0] in ['IDENTIFIER', 'KEYWORD'] and
-                tokens[i + 1][0] == 'ARITHMETIC_OPERATOR' and
-                tokens[i + 1][1] == '-' and
-                tokens[i + 2][0] in ['IDENTIFIER', 'KEYWORD']):
+                tokens[i].token_type in ['IDENTIFIER', 'KEYWORD'] and
+                tokens[i + 1].token_type == 'ARITHMETIC_OPERATOR' and
+                tokens[i + 1].lexeme == '-' and
+                tokens[i + 2].token_type in ['IDENTIFIER', 'KEYWORD']):
                 
                 # Bentuk kandidat keyword dengan menggabungkan lexeme
-                candidate = (tokens[i][1] + '-' + tokens[i + 2][1]).lower()
+                candidate = (tokens[i].lexeme + '-' + tokens[i + 2].lexeme).lower()
                 
                 # Jika kandidat adalah keyword ber-hyphen yang valid
                 if candidate in self.hyphenated_keywords:
                     # Gabungkan menjadi satu token KEYWORD
-                    merged_tokens.append(('KEYWORD', candidate))
+                    merged_tokens.append(Token('KEYWORD', candidate))
                     i += 3  # Skip tiga token yang sudah digabung
                     continue
             
@@ -80,7 +82,7 @@ class Lexer:
         
         return merged_tokens
 
-    def tokenize(self, source_code):
+    def tokenize(self, source_code:str) -> List[Token]:
         """
         Memproses source code dan mengubahnya menjadi daftar token.
         Melempar LexicalError jika ada kesalahan.
@@ -217,7 +219,7 @@ class Lexer:
                         token_type = self.reserved_operators[lexeme_lower]
                 
                 # Tambahkan token ke daftar token
-                tokens.append((token_type, lexeme))
+                tokens.append(Token(token_type, lexeme))
                 
                 # Perbarui posisi utama ke posisi setelah token yang ditemukan
                 position += len(lexeme)
@@ -287,8 +289,8 @@ def main():
             # Output ke terminal
             print("Tokenization successful. Daftar token:")
             print("=" * 40)
-            for token_type, lexeme in tokens:
-                print(f"{token_type}({lexeme})")
+            for token in tokens:
+                print(token)
 
     except LexicalError as e:
         print(str(e), file=sys.stderr)
