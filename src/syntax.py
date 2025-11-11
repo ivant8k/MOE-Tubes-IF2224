@@ -1,5 +1,6 @@
 from models import CFG, Node, NonTerminal, Token, TokenType, Lexeme, Epsilon
 from lexer import Lexer, LexicalError # Asumsi lexer.py ada di folder yang sama
+import sys
 
 # !!! HANYA UNTUK CEK KELAS CFG DAN TREE !!! 
 
@@ -171,18 +172,29 @@ production_rules = {
 
 def main():
     # Gunakan path ke dfa.json Anda
-    dfa_path = "dfa.json" 
+    import os
+    dfa_path = os.path.join(os.path.dirname(__file__), "dfa.json") 
     
     # Kode sumber yang AKAN BERHASIL di-parse
-    source_code = """
-    program ProgramValid;
-    variabel
-      x: integer;
-    mulai
-      x := 5 + 10;
-    selesai.
-    """
-    
+    # source_code = """
+    # program ProgramValid;
+    # variabel
+    #   x: integer;
+    # mulai
+    #   x := 5 + 10;
+    # selesai.
+    # """
+    if len(sys.argv) != 2:
+        print("Usage: python syntax.py <source_code_file>")
+        sys.exit(1)
+
+    source_file = sys.argv[1]
+    try:
+        with open(source_file, 'r') as f:
+            source_code = f.read()
+    except FileNotFoundError:
+        print(f"Error: File not found at {source_file}")
+        sys.exit(1)    
     # 1. Jalankan Lexer
     print("Menjalankan Lexer...")
     lexer = Lexer(dfa_path)
