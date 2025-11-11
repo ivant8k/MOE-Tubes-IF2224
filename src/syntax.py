@@ -25,6 +25,15 @@ SimpleExpressionPrime = NonTerminal("<SimpleExpressionPrime>")
 Term = NonTerminal("<Term>")
 Factor = NonTerminal("<Factor>")
 
+# Penambahan Non-Terminal 
+Range = NonTerminal("<Range>")
+ArrayType = NonTerminal("<ArrayType>")
+TermPrime = NonTerminal("<TermPrime>")
+IfStatement = NonTerminal("<IfStatement>")
+WhileStatement = NonTerminal("<WhileStatement>")
+ForStatement = NonTerminal("<ForStatement>")
+ProcedureCall = NonTerminal("<ProcedureCall>")
+
 # Token Types (TokenType)
 T_ID = TokenType("IDENTIFIER")
 T_NUMBER = TokenType("NUMBER")
@@ -32,8 +41,19 @@ T_SEMI = TokenType("SEMICOLON")
 T_COLON = TokenType("COLON")
 T_ASSIGN = TokenType("ASSIGN_OPERATOR")
 T_DOT = TokenType("DOT")
+T_COMMA = TokenType("COMMA")
 T_LPAREN = TokenType("LPARENTHESIS")
 T_RPAREN = TokenType("RPARENTHESIS")
+T_LBRACKET = TokenType("LBRACKET")
+T_RBRACKET = TokenType("RBRACKET")
+
+# Keywords and Specific Tokens (Token)
+T_JIKA = Token("KEYWORD", "jika")
+T_MAKA = Token("KEYWORD", "maka")
+T_SELAINITU = Token("KEYWORD", "selain-itu")
+T_SELAMA = Token("KEYWORD", "selama")
+T_LAKUKAN = Token("KEYWORD", "lakukan")
+T_UNTUK = Token("KEYWORD", "untuk")
 
 # Specific Tokens (Token)
 T_PROGRAM = Token("KEYWORD", "program")
@@ -41,11 +61,23 @@ T_VARIABEL = Token("KEYWORD", "variabel")
 T_MULAI = Token("KEYWORD", "mulai")
 T_SELESAI = Token("KEYWORD", "selesai")
 T_INTEGER = Token("KEYWORD", "integer")
+T_BAGI = Token("ARITHMETIC_OPERATOR", "bagi")
+T_LARIK = Token("KEYWORD", "larik")
+T_REAL = Token("KEYWORD", "real")
+T_BOOLEAN = Token("KEYWORD", "boolean")
+T_CHAR = Token("KEYWORD", "char")
+T_STRING = Token("KEYWORD", "string")
+
+# operators
 T_PLUS = Token("ARITHMETIC_OPERATOR", "+")
 T_MINUS = Token("ARITHMETIC_OPERATOR", "-")
 T_STAR = Token("ARITHMETIC_OPERATOR", "*")
 T_SLASH = Token("ARITHMETIC_OPERATOR", "/")
-T_BAGI = Token("ARITHMETIC_OPERATOR", "bagi")
+
+T_RANGEOP = Token("RANGE_OPERATOR", "..")
+
+
+
 
 # Epsilon
 EPS = Epsilon()
@@ -94,8 +126,14 @@ production_rules = {
     
     # <Type> -> integer | real | ... (Kita batasi 'integer' dulu)
     Type: [
-        [T_INTEGER]
+        [T_INTEGER],
+        [T_REAL],
+        [T_BOOLEAN],
+        [T_CHAR],
+        [T_STRING],
     ],
+    ArrayType: [[T_LARIK, T_LBRACKET, Range, T_RBRACKET, Type]],
+    Range: [[Expression, T_RANGEOP, Expression]],
     
     # <StatementPart> -> mulai <StatementList> selesai
     StatementPart: [
@@ -111,12 +149,29 @@ production_rules = {
     
     # <Statement> -> <AssignmentStatement> | ... (Kita batasi assignment dulu)
     Statement: [
-        [AssignmentStatement]
+        [AssignmentStatement],
+        [IfStatement],
+        [WhileStatement],
+        [ForStatement],
+        [ProcedureCall],
+        [EPS]
     ],
     
     # <AssignmentStatement> -> IDENTIFIER := <Expression>
     AssignmentStatement: [
         [T_ID, T_ASSIGN, Expression]
+
+    ],
+
+    #<IfStatement> -> if <Expression> then <Statement> else <Statement>
+    IfStatement: [
+        [T_JIKA, Expression, T_MAKA, Statement],
+        [T_JIKA, Expression, T_MAKA, Statement, T_SELAINITU, Statement]
+    ],
+
+    #<WhileStatement> -> while <Expression> do <Statement>
+    WhileStatement: [
+        [T_SELAMA, Expression, T_LAKUKAN, Statement],
     ],
     
     # ----- Aturan Ekspresi Aritmatika -----
