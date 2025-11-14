@@ -271,7 +271,7 @@ def setupProductionRules() -> RuleDict:
 
         # <ElsePart> ::= KEYWORD(selain-itu) <Statement> | <Epsilon>
         NonTerminal("<ElsePart>"): [
-            [Token("KEYWORD", "selain-itu"), NonTerminal("<Statement>")],
+            [Token("IDENTIFIER", "selain"), Token("ARITHMETIC_OPERATOR", "-"), Token("IDENTIFIER", "itu"), NonTerminal("<Statement>")],
             [Epsilon()]
         ],
 
@@ -293,7 +293,7 @@ def setupProductionRules() -> RuleDict:
         # <ForDirection> ::= KEYWORD(ke) | KEYWORD(turun-ke)
         NonTerminal("<ForDirection>"): [
             [Token("KEYWORD", "ke")],
-            [Token("KEYWORD", "turun-ke")]
+            [Token("IDENTIFIER", "turun"), Token("ARITHMETIC_OPERATOR", "-"), Token("KEYWORD", "ke")]
         ],
 
         # <CaseStatement> ::= KEYWORD(kasus) <Expression> KEYWORD(dari) <CaseList> <CaseEndOpt> KEYWORD(selesai)
