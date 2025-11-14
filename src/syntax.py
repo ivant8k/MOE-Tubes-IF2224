@@ -26,12 +26,18 @@ Term = NonTerminal("<Term>")
 Factor = NonTerminal("<Factor>")
 
 # Penambahan Non-Terminal 
-
+DeclarationPart = NonTerminal("<DeclarationPart>")
+ConstDeclaration = NonTerminal("<ConstDeclaration>")
+TypeDeclaration = NonTerminal("<TypeDeclaration>")
+IdentifierList = NonTerminal("<IdentifierList>")
 Range = NonTerminal("<Range>")
 ArrayType = NonTerminal("<ArrayType>")
 SubprogramDeclaration = NonTerminal("<SubprogramDeclaration>")
 ProcedureDeclaration = NonTerminal("<ProcedureDeclaration>")
 FunctionDeclaration = NonTerminal("<FunctionDeclaration>")
+FormalParameterList = NonTerminal("<FormalParameterList>")
+ParameterGroup = NonTerminal("<ParameterGroup>")
+CompoundStatement = NonTerminal("<CompoundStatement>")
 TermPrime = NonTerminal("<TermPrime>")
 CompoundStatement = NonTerminal("<CompoundStatement>")
 IfStatement = NonTerminal("<IfStatement>")
@@ -57,12 +63,24 @@ T_LBRACKET = TokenType("LBRACKET")
 T_RBRACKET = TokenType("RBRACKET")
 
 # Keywords and Specific Tokens (Token)
+T_PROGRAM = Token("KEYWORD", "program")
+T_KONSTANTA = Token("KEYWORD", "konstanta")
+T_TIPE = Token("KEYWORD", "tipe")
+T_VARIABEL = Token("KEYWORD", "variabel")
+T_PROSEDUR = Token("KEYWORD", "prosedur")
+T_FUNGSI = Token("KEYWORD", "fungsi")
+T_MULAI = Token("KEYWORD", "mulai")
+T_SELESAI = Token("KEYWORD", "selesai")
+T_INTEGER = Token("KEYWORD", "integer")
+T_REAL = Token("KEYWORD", "real")
+T_BOOLEAN = Token("KEYWORD", "boolean")
+T_CHAR = Token("KEYWORD", "char")
+T_STRING = Token("KEYWORD", "string")
 T_JIKA = Token("KEYWORD", "jika")
 T_MAKA = Token("KEYWORD", "maka")
 T_SELAINITU = Token("KEYWORD", "selain-itu")
 T_SELAMA = Token("KEYWORD", "selama")
 T_LAKUKAN = Token("KEYWORD", "lakukan")
-T_UNTUK = Token("KEYWORD", "untuk")
 T_UNTUK = Token("KEYWORD", "untuk")
 T_KE = Token("KEYWORD", "ke")
 T_TURUNKE = Token("KEYWORD", "turun-ke")
@@ -121,7 +139,7 @@ production_rules = {
     
     # <Program> -> <ProgramHeader> <Block> .
     Program: [
-        [ProgramHeader, Block, T_DOT]
+        [ProgramHeader, DeclarationPart, CompoundStatement, T_DOT]
     ],
     
     # <ProgramHeader> -> program IDENTIFIER ;
@@ -154,7 +172,9 @@ production_rules = {
         [T_BOOLEAN],
         [T_CHAR],
         [T_STRING],
+        [ArrayType]
     ],
+
     ArrayType: [[T_LARIK, T_LBRACKET, Range, T_RBRACKET, Type]],
     Range: [[Expression, T_RANGEOP, Expression]],
     
@@ -177,12 +197,14 @@ production_rules = {
         [WhileStatement],
         [ForStatement],
         [ProcedureCall],
+        [CompoundStatement],
         [EPS]
     ],
     
     # <AssignmentStatement> -> IDENTIFIER := <Expression>
     AssignmentStatement: [
-        [T_ID, T_ASSIGN, Expression]
+        [T_ID, T_ASSIGN, Expression],
+        [T_ID, T_LBRACKET, Expression, T_RBRACKET, T_ASSIGN, Expression]
 
     ],
 
@@ -200,6 +222,7 @@ production_rules = {
     # ----- Aturan Ekspresi Aritmatika -----
     # <Expression> -> <SimpleExpression>
     Expression: [
+        [SimpleExpression, RelationalOperator, SimpleExpression],
         [SimpleExpression]
     ],
     
@@ -228,9 +251,15 @@ production_rules = {
     # <Factor> -> IDENTIFIER | NUMBER | ( <Expression> )
     Factor: [
         [T_ID],
+        [T_ID, T_LBRACKET, Expression, T_RBRACKET],
+        [T_ID, T_LPAREN, ParameterList, T_RPAREN],
+        [T_ID, T_LPAREN, T_RPAREN],
         [T_NUMBER],
-        [T_LPAREN, Expression, T_RPAREN]
-    ]
+        # [T_STRINGLIT],
+        # [T_CHARLIT],
+        [T_LPAREN, Expression, T_RPAREN],
+        [T_TIDAK, Factor]
+    ],
     
     # NOTE: <TermPrime> sengaja dihilangkan untuk minimalitas,
     # tapi jika Anda ingin A * B / C, Anda akan menambahkannya:
@@ -243,6 +272,91 @@ production_rules = {
     #    [T_BAGI, Factor, TermPrime],
     #    [EPS]
     # ]
+
+    # Penambahan aturan lain dapat dilakukan di sini...
+    DeclarationPart: [
+        [ConstDeclaration, DeclarationPart],
+        [TypeDeclaration, DeclarationPart],
+        [VarDeclarationPart, DeclarationPart],
+        [SubprogramDeclaration, DeclarationPart],
+        [EPS]
+    ],
+
+    ConstDeclaration: [
+        [T_KONSTANTA, IdentifierList, T_ASSIGN, Expression, T_SEMI],
+    ],
+
+    TypeDeclaration: [
+        [T_TIPE, T_ID, T_ASSIGN, Type, T_SEMI]
+    ],
+
+    IdentifierList: [
+        [T_ID, T_COMMA, IdentifierList],
+        [T_ID]
+    ],
+
+    SubprogramDeclaration: [
+        [ProcedureDeclaration],
+        [FunctionDeclaration]
+    ],
+
+    ProcedureDeclaration: [
+        [T_PROSEDUR, T_ID, T_LPAREN, FormalParameterList, T_RPAREN, T_SEMI,
+         DeclarationPart, CompoundStatement, T_SEMI]
+    ],
+
+    FunctionDeclaration: [
+        [T_FUNGSI, T_ID, T_LPAREN, FormalParameterList, T_RPAREN, T_COLON, Type, T_SEMI, DeclarationPart, CompoundStatement, T_SEMI]
+    ],
+
+    FormalParameterList: [
+        [ParameterGroup, T_SEMI, FormalParameterList],
+        [ParameterGroup],
+        [EPS]
+    ],
+
+    ParameterGroup: [
+        [IdentifierList, T_COLON, Type]
+    ],
+
+
+    CompoundStatement: [
+        [T_MULAI, StatementList, T_SELESAI]
+    ],
+
+    ForStatement: [
+        [T_UNTUK, T_ID, T_ASSIGN, Expression, T_KE, Expression, T_LAKUKAN, Statement],
+        [T_UNTUK, T_ID, T_ASSIGN, Expression, T_TURUNKE, Expression, T_LAKUKAN, Statement]
+    ],
+
+    ProcedureCall: [
+        [T_ID, T_LPAREN, ParameterList, T_RPAREN],
+        [T_ID, T_LPAREN, T_RPAREN]
+    ],
+
+    ParameterList: [
+        [Expression, T_COMMA, ParameterList],
+        [Expression]
+    ],
+
+    RelationalOperator: [
+        [T_EQ],
+        [T_NEQ],
+        [T_LT],
+        [T_LTE],
+        [T_GT],
+        [T_GTE]
+    ],
+
+    AdditiveOperator: [
+        [T_PLUS],
+        [T_MINUS], 
+        [T_ATAU]
+    ],
+
+    MultiplicativeOperator: [
+        [T_STAR], [T_SLASH], [T_BAGI], [T_DAN]
+    ],
 }
 
 
