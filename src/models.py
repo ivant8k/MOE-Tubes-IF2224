@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import List, Dict, Callable
+from dataclasses import dataclass, field
+from typing import Any, List, Dict, Callable, Optional
 
 # ===== Class for Token =====
 
@@ -12,13 +12,26 @@ class Lexeme(str):
 class Token:
     token_type: TokenType
     lexeme: Lexeme
-    
+    # Posisi, default None jika tidak diberikan
+    line: Optional[int] = field(default=None)
+    column: Optional[int] = field(default=None)
+
     def __iter__(self):
         yield self.token_type
         yield self.lexeme
 
     def __str__(self):
         return f"{self.token_type}({self.lexeme})"
+
+    # Override metode __eq__ untuk perbandingan hanya berdasarkan token_type dan lexeme
+    def __eq__(self, other):
+        if not isinstance(other, Token):
+            return NotImplemented
+        return (self.token_type == other.token_type) and (self.lexeme == other.lexeme)
+    
+    # Override __hash__ untuk memastikan hash yang konsisten dengan __eq__
+    def __hash__(self):
+        return hash((self.token_type, self.lexeme))
 
 
 
@@ -76,10 +89,19 @@ class CFG:
     production_rules: Dict[NonTerminal, Callable[[], Node|None]] # Diubah
     tokens: List[Token]
     currentTokenID = 0
+    # UNTUK ERROR REPORTING
+    max_error_info: Dict[str, Any]
 
-    def __init__(self, tokens:List[Token]):
+    def __init__(self):
         self.production_rules = {}
-        self.tokens = tokens
+        self.currentTokenID = 0
+        
+        # Inisialisasi pelacak error
+        self.max_error_info = {
+            'max_id': -1,      # Token ID terjauh yang gagal
+            'expected': set(), # Apa yang diharapkan di posisi itu (bisa banyak)
+            'found': None      # Token apa yang ditemukan di posisi itu
+        }
     
     # GET TOKEN
     def nextToken(self) -> None:
@@ -92,6 +114,22 @@ class CFG:
             return Token(TokenType("EOF"), Lexeme("EOF")) # Token Penjaga
         return self.tokens[self.currentTokenID]
 
+    # ERROR REPORTING
+    def record_error(self, expected_symbol: Token|TokenType, found_token: Token):
+        """Mencatat kegagalan jika ini adalah yang 'terjauh'."""
+        current_fail_id = self.currentTokenID
+        
+        # Menemukan error di posisi yang LEBIH JAUH.
+        if current_fail_id > self.max_error_info['max_id']:
+            self.max_error_info['max_id'] = current_fail_id
+            self.max_error_info['expected'] = {expected_symbol}
+            self.max_error_info['found'] = found_token
+        
+        # Menemukan error di posisi terjauh yang SAMA.
+        elif current_fail_id == self.max_error_info['max_id']:
+            # Tambahkan 'symbol' ini sebagai ekspektasi alternatif (contoh: expect ID or NUMBER)
+            self.max_error_info['expected'].add(expected_symbol)
+
     # PRODUCTION RULES
     def addRules(self, rules: Dict[NonTerminal, List[List[NonTerminal|Token|TokenType|Epsilon]]]) -> None:
         for lhs, rhs in rules.items():
@@ -101,7 +139,7 @@ class CFG:
             def execute_rules(current_lhs=lhs, current_rhs=rhs) -> Node|None:
                 newNode = Node(current_lhs)
 
-                print(f"Endpoint execute_rules:\n\tcurrent_lhs={current_lhs}\n\tcurrent_rhs={current_rhs}\n\ttoken={self.currentToken()}")
+                # print(f"Endpoint execute_rules:\n\tcurrent_lhs={current_lhs}\n\tcurrent_rhs={current_rhs}\n\ttoken={self.currentToken()}")
                 
                 # Simpan posisi token untuk backtracking
                 initial_token_id = self.currentTokenID
@@ -115,9 +153,9 @@ class CFG:
                     self.currentTokenID = initial_token_id
 
                     # Try Apply
-                    print(f"Alternative Check: {alternative}")
+                    # print(f"Alternative Check: {alternative}")
                     for symbol in alternative:
-                        print(f"Matching: simbol={symbol} token={self.currentToken()}")
+                        # print(f"Matching: simbol={symbol} token={self.currentToken()}")
                         
                         # Inisialisasi childNode
                         childNode: Node = None 
@@ -127,6 +165,7 @@ class CFG:
                             # Cek apakah parse rekursif GAGAL
                             if childNode is None:
                                 isMatch = False
+                                # JANGAN RECORD ERROR DI SINI: biarkan dia cari alternatif
                         
                         elif isinstance(symbol, Token):
                             if symbol == self.currentToken():
@@ -136,6 +175,8 @@ class CFG:
                                 self.nextToken()
                             else:
                                 isMatch = False
+                                # RECORD ERROR
+                                self.record_error(symbol, self.currentToken())
                         
                         elif isinstance(symbol, TokenType):
                             if symbol == self.currentToken().token_type:
@@ -145,6 +186,8 @@ class CFG:
                                 self.nextToken()
                             else:
                                 isMatch = False
+                                # PANGGIL PELACAK ERROR
+                                self.record_error(symbol, self.currentToken())
                         
                         elif isinstance(symbol, Epsilon):
                             isMatch = True 
@@ -173,7 +216,11 @@ class CFG:
             self.production_rules[lhs] = execute_rules
 
     def parse(self, lhs:NonTerminal=NonTerminal("<Program>")) -> Node|None: # Mengembalikan None jika gagal
-        print(f"Mencoba parsing aturan: {lhs}")
+        # print(f"Mencoba parsing aturan: {lhs}")
         if lhs not in self.production_rules:
             raise Exception(f"Aturan produksi untuk {lhs} tidak ditemukan.")
         return self.production_rules[lhs]()
+    
+    def parseToken(self, tokens:List[Token]) -> Node|None:
+        self.tokens = tokens
+        return self.parse()
