@@ -3,7 +3,7 @@ import sys
 import os
 from lexer import Lexer, LexicalError
 from models import CFG, Node
-from rulesSpek import setupProductionRules
+from rules import setupProductionRules
 
 def main():
     """
