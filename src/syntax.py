@@ -1,435 +1,105 @@
-from models import CFG, Node, NonTerminal, Token, TokenType, Lexeme, Epsilon
-from lexer import Lexer, LexicalError # Asumsi lexer.py ada di folder yang sama
+# nama file: syntax.py
 import sys
-
-# !!! HANYA UNTUK CEK KELAS CFG DAN TREE !!! 
-
-# ===== 1. DEFINISI TIPE TOKEN (Untuk Keterbacaan) =====
-# Ini membantu membuat aturan lebih mudah dibaca daripada string mentah
-
-# Non-Terminals
-S = NonTerminal("<S>")
-Program = NonTerminal("<Program>")
-ProgramHeader = NonTerminal("<ProgramHeader>")
-Block = NonTerminal("<Block>")
-VarDeclarationPart = NonTerminal("<VarDeclarationPart>")
-VarDeclaration = NonTerminal("<VarDeclaration>")
-Type = NonTerminal("<Type>")
-StatementPart = NonTerminal("<StatementPart>")
-StatementList = NonTerminal("<StatementList>")
-Statement = NonTerminal("<Statement>")
-AssignmentStatement = NonTerminal("<AssignmentStatement>")
-Expression = NonTerminal("<Expression>")
-SimpleExpression = NonTerminal("<SimpleExpression>")
-SimpleExpressionPrime = NonTerminal("<SimpleExpressionPrime>")
-Term = NonTerminal("<Term>")
-Factor = NonTerminal("<Factor>")
-
-# Penambahan Non-Terminal 
-DeclarationPart = NonTerminal("<DeclarationPart>")
-ConstDeclaration = NonTerminal("<ConstDeclaration>")
-TypeDeclaration = NonTerminal("<TypeDeclaration>")
-IdentifierList = NonTerminal("<IdentifierList>")
-Range = NonTerminal("<Range>")
-ArrayType = NonTerminal("<ArrayType>")
-SubprogramDeclaration = NonTerminal("<SubprogramDeclaration>")
-ProcedureDeclaration = NonTerminal("<ProcedureDeclaration>")
-FunctionDeclaration = NonTerminal("<FunctionDeclaration>")
-FormalParameterList = NonTerminal("<FormalParameterList>")
-ParameterGroup = NonTerminal("<ParameterGroup>")
-CompoundStatement = NonTerminal("<CompoundStatement>")
-TermPrime = NonTerminal("<TermPrime>")
-CompoundStatement = NonTerminal("<CompoundStatement>")
-IfStatement = NonTerminal("<IfStatement>")
-WhileStatement = NonTerminal("<WhileStatement>")
-ForStatement = NonTerminal("<ForStatement>")
-ProcedureCall = NonTerminal("<ProcedureCall>")
-ParameterList = NonTerminal("<ParameterList>")
-RelationalOperator = NonTerminal("<RelationalOperator>")
-AdditiveOperator = NonTerminal("<AdditiveOperator>")
-MultiplicativeOperator = NonTerminal("<MultiplicativeOperator>")
-
-# Token Types (TokenType)
-T_ID = TokenType("IDENTIFIER")
-T_NUMBER = TokenType("NUMBER")
-T_SEMI = TokenType("SEMICOLON")
-T_COLON = TokenType("COLON")
-T_ASSIGN = TokenType("ASSIGN_OPERATOR")
-T_DOT = TokenType("DOT")
-T_COMMA = TokenType("COMMA")
-T_LPAREN = TokenType("LPARENTHESIS")
-T_RPAREN = TokenType("RPARENTHESIS")
-T_LBRACKET = TokenType("LBRACKET")
-T_RBRACKET = TokenType("RBRACKET")
-
-# Keywords and Specific Tokens (Token)
-T_PROGRAM = Token("KEYWORD", "program")
-T_KONSTANTA = Token("KEYWORD", "konstanta")
-T_TIPE = Token("KEYWORD", "tipe")
-T_VARIABEL = Token("KEYWORD", "variabel")
-T_PROSEDUR = Token("KEYWORD", "prosedur")
-T_FUNGSI = Token("KEYWORD", "fungsi")
-T_MULAI = Token("KEYWORD", "mulai")
-T_SELESAI = Token("KEYWORD", "selesai")
-T_INTEGER = Token("KEYWORD", "integer")
-T_REAL = Token("KEYWORD", "real")
-T_BOOLEAN = Token("KEYWORD", "boolean")
-T_CHAR = Token("KEYWORD", "char")
-T_STRING = Token("KEYWORD", "string")
-T_JIKA = Token("KEYWORD", "jika")
-T_MAKA = Token("KEYWORD", "maka")
-T_SELAINITU = Token("KEYWORD", "selain-itu")
-T_SELAMA = Token("KEYWORD", "selama")
-T_LAKUKAN = Token("KEYWORD", "lakukan")
-T_UNTUK = Token("KEYWORD", "untuk")
-T_KE = Token("KEYWORD", "ke")
-T_TURUNKE = Token("KEYWORD", "turun-ke")
-T_LARIK = Token("KEYWORD", "larik")
-T_DARI = Token("KEYWORD", "dari")
-T_DAN = Token("KEYWORD", "dan")
-T_ATAU = Token("KEYWORD", "atau")
-T_TIDAK = Token("KEYWORD", "tidak")
-
-
-# Specific Tokens (Token)
-T_PROGRAM = Token("KEYWORD", "program")
-T_VARIABEL = Token("KEYWORD", "variabel")
-T_MULAI = Token("KEYWORD", "mulai")
-T_SELESAI = Token("KEYWORD", "selesai")
-T_INTEGER = Token("KEYWORD", "integer")
-T_BAGI = Token("ARITHMETIC_OPERATOR", "bagi")
-T_LARIK = Token("KEYWORD", "larik")
-T_REAL = Token("KEYWORD", "real")
-T_BOOLEAN = Token("KEYWORD", "boolean")
-T_CHAR = Token("KEYWORD", "char")
-T_STRING = Token("KEYWORD", "string")
-
-# operators
-T_PLUS = Token("ARITHMETIC_OPERATOR", "+")
-T_MINUS = Token("ARITHMETIC_OPERATOR", "-")
-T_STAR = Token("ARITHMETIC_OPERATOR", "*")
-T_SLASH = Token("ARITHMETIC_OPERATOR", "/")
-T_EQ = Token("RELATIONAL_OPERATOR", "=")
-T_NEQ = Token("RELATIONAL_OPERATOR", "<>")
-T_LT = Token("RELATIONAL_OPERATOR", "<")
-T_LTE = Token("RELATIONAL_OPERATOR", "<=")
-T_GT = Token("RELATIONAL_OPERATOR", ">")
-T_GTE = Token("RELATIONAL_OPERATOR", ">=")
-T_RANGEOP = Token("RANGE_OPERATOR", "..")
-
-
-
-
-# Epsilon
-EPS = Epsilon()
-
-
-# ===== 2. DEFINISI ATURAN PRODUKSI (CFG) =====
-
-# Grammar ini dirancang untuk Recursive Descent (Top-Down)
-# dan sudah di-refactor untuk menghindari Left-Recursion.
-# Aturan ini cukup untuk mem-parsing 'input-valid.pas'
-# dan ekspresi aritmatika sederhana.
-
-production_rules = {
-    # <S> -> <Program>
-    S: [
-        [Program]
-    ],
-    
-    # <Program> -> <ProgramHeader> <Block> .
-    Program: [
-        [ProgramHeader, DeclarationPart, CompoundStatement, T_DOT]
-    ],
-    
-    # <ProgramHeader> -> program IDENTIFIER ;
-    ProgramHeader: [
-        [T_PROGRAM, T_ID, T_SEMI]
-    ],
-    
-    # <Block> -> <VarDeclarationPart> <StatementPart>
-    Block: [
-        [VarDeclarationPart, StatementPart]
-    ],
-    
-    # <VarDeclarationPart> -> variabel <VarDeclaration> ; | epsilon
-    # Dibuat opsional (bisa epsilon) jika tidak ada 'variabel'
-    VarDeclarationPart: [
-        [T_VARIABEL, VarDeclaration, T_SEMI], 
-        [EPS]
-    ],
-    
-    # <VarDeclaration> -> IDENTIFIER : <Type>
-    # (Disederhanakan, asumsi hanya satu variabel)
-    VarDeclaration: [
-        [T_ID, T_COLON, Type]
-    ],
-    
-    # <Type> -> integer | real | ... (Kita batasi 'integer' dulu)
-    Type: [
-        [T_INTEGER],
-        [T_REAL],
-        [T_BOOLEAN],
-        [T_CHAR],
-        [T_STRING],
-        [ArrayType]
-    ],
-
-    ArrayType: [[T_LARIK, T_LBRACKET, Range, T_RBRACKET, Type]],
-    Range: [[Expression, T_RANGEOP, Expression]],
-    
-    # <StatementPart> -> mulai <StatementList> selesai
-    StatementPart: [
-        [T_MULAI, StatementList, T_SELESAI]
-    ],
-    
-    # <StatementList> -> <Statement> ; <StatementList> | epsilon
-    # Aturan rekursif kanan ini mengizinkan 0 atau lebih statement
-    StatementList: [
-        [Statement, T_SEMI, StatementList],
-        [EPS]
-    ],
-    
-    # <Statement> -> <AssignmentStatement> | ... (Kita batasi assignment dulu)
-    Statement: [
-        [AssignmentStatement],
-        [IfStatement],
-        [WhileStatement],
-        [ForStatement],
-        [ProcedureCall],
-        [CompoundStatement],
-        [EPS]
-    ],
-    
-    # <AssignmentStatement> -> IDENTIFIER := <Expression>
-    AssignmentStatement: [
-        [T_ID, T_ASSIGN, Expression],
-        [T_ID, T_LBRACKET, Expression, T_RBRACKET, T_ASSIGN, Expression]
-
-    ],
-
-    #<IfStatement> -> if <Expression> then <Statement> else <Statement>
-    IfStatement: [
-        [T_JIKA, Expression, T_MAKA, Statement],
-        [T_JIKA, Expression, T_MAKA, Statement, T_SELAINITU, Statement]
-    ],
-
-    #<WhileStatement> -> while <Expression> do <Statement>
-    WhileStatement: [
-        [T_SELAMA, Expression, T_LAKUKAN, Statement],
-    ],
-    
-    # ----- Aturan Ekspresi Aritmatika -----
-    # <Expression> -> <SimpleExpression>
-    Expression: [
-        [SimpleExpression, RelationalOperator, SimpleExpression],
-        [SimpleExpression]
-    ],
-    
-    # <SimpleExpression> -> <Term> <SimpleExpressionPrime>
-    SimpleExpression: [
-        [Term, SimpleExpressionPrime]
-    ],
-    
-    # <SimpleExpressionPrime> -> + <Term> <SimpleExpressionPrime>
-    #                          | - <Term> <SimpleExpressionPrime>
-    #                          | epsilon
-    # Ini menangani A + B - C ...
-    SimpleExpressionPrime: [
-        [T_PLUS, Term, SimpleExpressionPrime],
-        [T_MINUS, Term, SimpleExpressionPrime],
-        [EPS]
-    ],
-    
-    # <Term> -> <Factor> <TermPrime>
-    Term: [
-        [Factor] # Disederhanakan untuk input 5 + 10
-        # Jika ingin menangani * dan /:
-        # [Factor, TermPrime] 
-    ],
-    
-    # <Factor> -> IDENTIFIER | NUMBER | ( <Expression> )
-    Factor: [
-        [T_ID],
-        [T_ID, T_LBRACKET, Expression, T_RBRACKET],
-        [T_ID, T_LPAREN, ParameterList, T_RPAREN],
-        [T_ID, T_LPAREN, T_RPAREN],
-        [T_NUMBER],
-        # [T_STRINGLIT],
-        # [T_CHARLIT],
-        [T_LPAREN, Expression, T_RPAREN],
-        [T_TIDAK, Factor]
-    ],
-    
-    # NOTE: <TermPrime> sengaja dihilangkan untuk minimalitas,
-    # tapi jika Anda ingin A * B / C, Anda akan menambahkannya:
-    # TermPrime = NonTerminal("<TermPrime>")
-    # ...
-    # Term: [[Factor, TermPrime]],
-    # TermPrime: [
-    #    [T_STAR, Factor, TermPrime],
-    #    [T_SLASH, Factor, TermPrime],
-    #    [T_BAGI, Factor, TermPrime],
-    #    [EPS]
-    # ]
-
-    # Penambahan aturan lain dapat dilakukan di sini...
-    DeclarationPart: [
-        [ConstDeclaration, DeclarationPart],
-        [TypeDeclaration, DeclarationPart],
-        [VarDeclarationPart, DeclarationPart],
-        [SubprogramDeclaration, DeclarationPart],
-        [EPS]
-    ],
-
-    ConstDeclaration: [
-        [T_KONSTANTA, IdentifierList, T_ASSIGN, Expression, T_SEMI],
-    ],
-
-    TypeDeclaration: [
-        [T_TIPE, T_ID, T_ASSIGN, Type, T_SEMI]
-    ],
-
-    IdentifierList: [
-        [T_ID, T_COMMA, IdentifierList],
-        [T_ID]
-    ],
-
-    SubprogramDeclaration: [
-        [ProcedureDeclaration],
-        [FunctionDeclaration]
-    ],
-
-    ProcedureDeclaration: [
-        [T_PROSEDUR, T_ID, T_LPAREN, FormalParameterList, T_RPAREN, T_SEMI,
-         DeclarationPart, CompoundStatement, T_SEMI]
-    ],
-
-    FunctionDeclaration: [
-        [T_FUNGSI, T_ID, T_LPAREN, FormalParameterList, T_RPAREN, T_COLON, Type, T_SEMI, DeclarationPart, CompoundStatement, T_SEMI]
-    ],
-
-    FormalParameterList: [
-        [ParameterGroup, T_SEMI, FormalParameterList],
-        [ParameterGroup],
-        [EPS]
-    ],
-
-    ParameterGroup: [
-        [IdentifierList, T_COLON, Type]
-    ],
-
-
-    CompoundStatement: [
-        [T_MULAI, StatementList, T_SELESAI]
-    ],
-
-    ForStatement: [
-        [T_UNTUK, T_ID, T_ASSIGN, Expression, T_KE, Expression, T_LAKUKAN, Statement],
-        [T_UNTUK, T_ID, T_ASSIGN, Expression, T_TURUNKE, Expression, T_LAKUKAN, Statement]
-    ],
-
-    ProcedureCall: [
-        [T_ID, T_LPAREN, ParameterList, T_RPAREN],
-        [T_ID, T_LPAREN, T_RPAREN]
-    ],
-
-    ParameterList: [
-        [Expression, T_COMMA, ParameterList],
-        [Expression]
-    ],
-
-    RelationalOperator: [
-        [T_EQ],
-        [T_NEQ],
-        [T_LT],
-        [T_LTE],
-        [T_GT],
-        [T_GTE]
-    ],
-
-    AdditiveOperator: [
-        [T_PLUS],
-        [T_MINUS], 
-        [T_ATAU]
-    ],
-
-    MultiplicativeOperator: [
-        [T_STAR], [T_SLASH], [T_BAGI], [T_DAN]
-    ],
-}
-
-
-# ===== 3. FUNGSI UTAMA UNTUK MENJALANKAN PARSER =====
+import os
+from lexer import Lexer, LexicalError
+from models import CFG, Node
+from rules import setupProductionRules
 
 def main():
-    # Gunakan path ke dfa.json Anda
-    import os
-    dfa_path = os.path.join(os.path.dirname(__file__), "dfa.json") 
+    """
+    Driver utama untuk parser.
+    Mengambil 1 argumen: path ke file source code .pas
+    """
     
-    # Kode sumber yang AKAN BERHASIL di-parse
-    # source_code = """
-    # program ProgramValid;
-    # variabel
-    #   x: integer;
-    # mulai
-    #   x := 5 + 10;
-    # selesai.
-    # """
+    # --- 1. Validasi Argumen Input ---
     if len(sys.argv) != 2:
-        print("Usage: python syntax.py <source_code_file>")
+        print("Usage: python syntax.py <source_file_path.pas>", file=sys.stderr)
         sys.exit(1)
 
-    source_file = sys.argv[1]
+    source_file_path = sys.argv[1]
+    if not source_file_path.lower().endswith('.pas'):
+        print(f"Input Error: Source file harus berekstensi .pas. Diberikan: '{source_file_path}'", file=sys.stderr)
+        sys.exit(1)
+
+    # Tentukan path ke dfa.json (diasumsikan berada di direktori yang sama)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    dfa_path = os.path.join(script_dir, "dfa.json")
+    if not os.path.exists(dfa_path):
+        print(f"Fatal Error: 'dfa.json' tidak ditemukan di '{script_dir}'", file=sys.stderr)
+        sys.exit(1)
+
+    # --- 2. Baca Source Code ---
     try:
-        with open(source_file, 'r') as f:
+        with open(source_file_path, 'r') as f:
             source_code = f.read()
     except FileNotFoundError:
-        print(f"Error: File not found at {source_file}")
-        sys.exit(1)    
-    # 1. Jalankan Lexer
-    print("Menjalankan Lexer...")
+        print(f"Error: Input file tidak ditemukan di '{source_file_path}'", file=sys.stderr)
+        sys.exit(1)
+        
+    # --- 3. Jalankan Lexer ---
+    print("--- 1. Menjalankan Lexer ---")
     lexer = Lexer(dfa_path)
+    tokens = []
     try:
         tokens = lexer.tokenize(source_code)
-        print("Tokenisasi berhasil:")
-        for token in tokens:
-            print(f"  {token}")
+        print(f"Lexer berhasil: {len(tokens)} token ditemukan.")
     except LexicalError as e:
-        print(e)
-        return
+        print(str(e), file=sys.stderr)
+        sys.exit(1) # Keluar jika ada error leksikal
+    
+    # Opsional: Cetak token untuk debug
+    print("\n--- Daftar Token ---")
+    for token in tokens:
+        print(token)
+    print("--------------------\n")
 
-    print("\n" + "="*30 + "\n")
-
-    # 2. Inisialisasi CFG (Parser)
+    # --- 4. Jalankan Parser ---
+    print("\n--- 2. Menjalankan Parser ---")
+    
+    # Ambil aturan produksi dari rules.py
+    production_rules = setupProductionRules()
+    
+    # Inisialisasi parser (CFG) dengan token
     parser = CFG(tokens)
     
-    # 3. Tambahkan Aturan Produksi
+    # Daftarkan aturan ke parser
     parser.addRules(production_rules)
-    # print(parser.production_rules)
     
-    # 4. Mulai Parsing dari Non-Terminal <S>
-    print("Menjalankan Parser...")
+    parse_tree = None
     try:
+        # Mulai parsing dari non-terminal <Program> (default di CFG.parse())
         parse_tree = parser.parse()
         
-        if parse_tree and parser.currentToken().token_type == "EOF":
-            print("\nParsing BERHASIL!")
-            print("Parse Tree:")
-            print(parse_tree) # Memanggil __str__ dari Node
-        elif parse_tree:
-             print("\nParsing GAGAL: Sisa token tidak habis.")
-             print(f"Berhenti di token: {parser.currentToken()}")
-             print("Parse Tree (parsial):")
-             print(parse_tree)
+        # --- 5. Periksa Hasil Parsing ---
+        if parse_tree is not None:
+            # Parsing berhasil, TAPI kita harus cek apakah semua token terpakai.
+            final_token = parser.currentToken()
+            if final_token.token_type == "EOF":
+                print("\n✅ Parsing Berhasil!")
+                print("\n--- Parse Tree ---")
+                print(parse_tree)
+            else:
+                # Parsing selesai tapi masih ada sisa token
+                print("\n❌ Syntax Error: Parsing selesai, tapi masih ada sisa token yang tidak terduga.", file=sys.stderr)
+                print(f"Error di dekat token: {final_token} (Line: ??, Column: ??)", file=sys.stderr)
+                # Note: Info baris/kolom tidak disimpan di Token, jadi tidak bisa ditampilkan di sini.
         else:
-            print("\nParsing GAGAL: Tidak bisa mem-parsing dari awal.")
-            print(f"Token error di: {parser.currentToken()}")
+            # Parsing Gagal (parser mengembalikan None)
+            print("\n❌ Syntax Error: Parsing gagal.", file=sys.stderr)
+            # Coba tunjukkan token tempat parser gagal
+            failed_token_index = parser.currentTokenID
+            if failed_token_index < len(tokens):
+                failed_at_token = tokens[failed_token_index]
+                print(f"Parser berhenti di dekat token #{failed_token_index}: {failed_at_token}", file=sys.stderr)
+            else:
+                print("Parser berhenti di akhir file (EOF).", file=sys.stderr)
+            print("Aktifkan print() di dalam 'models.py' (baris 112, 119, 122) untuk debug langkah-demi-langkah.", file=sys.stderr)
 
     except Exception as e:
-        print(f"\nTerjadi error saat parsing: {e}")
+        print(f"\nFATAL PARSER ERROR (mungkin aturan hilang atau bug di parser): {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

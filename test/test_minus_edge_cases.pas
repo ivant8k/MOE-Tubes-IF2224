@@ -1,9 +1,9 @@
 program TestMinus;
-variabel a, b, selain, itu, turun, ke: integer;
+variabel a, b, selain, itu, turun: integer;
 mulai
   a := 10 - 5;
   b := selain - itu;
-  a := turun - ke;
+  a := turun;
   
   jika a > 0 maka
     a := 1

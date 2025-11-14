@@ -11,13 +11,10 @@
     "selesai": "KEYWORD",
     "jika": "KEYWORD",
     "maka": "KEYWORD",
-    "selain": "KEYWORD",
-    "itu": "KEYWORD",
     "selama": "KEYWORD",
     "lakukan": "KEYWORD",
     "untuk": "KEYWORD",
     "ke": "KEYWORD",
-    "turun": "KEYWORD",
     "integer": "KEYWORD",
     "real": "KEYWORD",
     "boolean": "KEYWORD",
@@ -33,7 +30,9 @@
     "kasus": "KEYWORD",
     "rekaman": "KEYWORD",
     "ulangi": "KEYWORD",
-    "sampai": "KEYWORD"
+    "sampai": "KEYWORD",
+    "selain-itu": "KEYWORD",
+    "turun-ke": "KEYWORD"
   },
   "reserved_operators": {
     "bagi": "ARITHMETIC_OPERATOR",
@@ -96,8 +95,15 @@
     },
     "S_IDENTIFIER": {
       "letter": "S_IDENTIFIER",
+      "digit": "S_IDENTIFIER",
+      "-": "S_IDENTIFIER_HYPHEN"
+    },
+
+    "S_IDENTIFIER_HYPHEN": {
+      "letter": "S_IDENTIFIER",
       "digit": "S_IDENTIFIER"
     },
+    
     "S_INTEGER": {
       "digit": "S_INTEGER",
       ".": "S_REAL_DOT",
