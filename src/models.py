@@ -101,7 +101,7 @@ class CFG:
             def execute_rules(current_lhs=lhs, current_rhs=rhs) -> Node|None:
                 newNode = Node(current_lhs)
 
-                # print(f"Endpoint execute_rules:\n\tcurrent_lhs={current_lhs}\n\tcurrent_rhs={current_rhs}\n\ttoken={self.currentToken()}")
+                print(f"Endpoint execute_rules:\n\tcurrent_lhs={current_lhs}\n\tcurrent_rhs={current_rhs}\n\ttoken={self.currentToken()}")
                 
                 # Simpan posisi token untuk backtracking
                 initial_token_id = self.currentTokenID
@@ -115,9 +115,9 @@ class CFG:
                     self.currentTokenID = initial_token_id
 
                     # Try Apply
-                    # print(f"Alternative Check: {alternative}")
+                    print(f"Alternative Check: {alternative}")
                     for symbol in alternative:
-                        # print(f"Matching: simbol={symbol} token={self.currentToken()}")
+                        print(f"Matching: simbol={symbol} token={self.currentToken()}")
                         
                         # Inisialisasi childNode
                         childNode: Node = None 
@@ -173,7 +173,7 @@ class CFG:
             self.production_rules[lhs] = execute_rules
 
     def parse(self, lhs:NonTerminal=NonTerminal("<Program>")) -> Node|None: # Mengembalikan None jika gagal
-        # print(f"Mencoba parsing aturan: {lhs}")
+        print(f"Mencoba parsing aturan: {lhs}")
         if lhs not in self.production_rules:
             raise Exception(f"Aturan produksi untuk {lhs} tidak ditemukan.")
         return self.production_rules[lhs]()
