@@ -8,7 +8,7 @@ Alternative = List[Symbol]
 Production = List[Alternative]
 RuleDict = Dict[NonTerminal, Production]
 
-def setupProductionRules() -> RuleDict:
+def getAllProductionRules() -> RuleDict:
     """
     Mendefinisikan dan mengembalikan seluruh aturan produksi (CFG)
     untuk bahasa PASCAL-S dalam format yang diharapkan oleh parser CFG.

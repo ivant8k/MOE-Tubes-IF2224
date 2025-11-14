@@ -1,9 +1,63 @@
 # nama file: syntax.py
 import sys
 import os
+from typing import List
 from lexer import Lexer, LexicalError
-from models import CFG, Node
-from rules import setupProductionRules
+from models import CFG, Node, Token
+from rules import getAllProductionRules
+
+class SyntaxError(Exception):
+    """Custom exception untuk error sintaks."""
+    def __init__(self, message:str, line:int=None, column:int=None) -> None:
+        if line and column:
+            super().__init__(f"Syntax Error on line {line}, column {column}: {message}")
+        else:
+            super().__init__(f"Syntax Error: {message}")
+        self.message = message
+        self.line = line
+        self.column = column
+
+class SyntaxAnalyzer():
+    """Kelas untuk SyntaxAnalyzer"""
+    cfg: CFG
+
+    def __init__(self):
+        self.cfg = CFG()
+        self.setupProductionRules()
+
+    def setupProductionRules(self):
+        self.cfg.addRules(getAllProductionRules())
+
+    def parse(self, tokens:List[Token]) -> Node|SyntaxError:
+        parse_tree = self.cfg.parseToken(tokens)
+
+        if parse_tree is not None:
+            # Parsing berhasil, TAPI kita harus cek apakah semua token terpakai.
+            final_token = self.cfg.currentToken()
+            if final_token.token_type == "EOF":
+                return parse_tree # success
+            else:
+                # Parsing selesai tapi masih ada sisa token
+                raise SyntaxError(message=f"\n\tUnexpected token {final_token}", line=final_token.line, column=final_token.column)
+        else:
+            # Parsing Gagal (parser mengembalikan None)
+            error_info = self.cfg.max_error_info
+            
+            if error_info['max_id'] != -1 and error_info['found']:
+                found = error_info['found']
+                # Format 'expected' set menjadi string yang rapi
+                expected_list = [str(e) for e in error_info['expected']]
+                if len(expected_list) > 1:
+                    expected_str = "one of possible tokens: " + ", ".join(expected_list)
+                elif expected_list:
+                    expected_str = expected_list[0]
+                else:
+                    raise SyntaxError(message="Something went wrong", line=found.line, column=found.column)
+                raise SyntaxError(message=f"\n\tUnexpected token {found}, \n\tExpected {expected_str}", line=found.line, column=found.column)
+
+            else:
+                # Fallback jika tidak ada info error (alasan lain)
+                raise SyntaxError(message="Something went wrong")
 
 def main():
     """
@@ -37,66 +91,27 @@ def main():
         sys.exit(1)
         
     # --- 3. Jalankan Lexer ---
-    print("--- 1. Menjalankan Lexer ---")
     lexer = Lexer(dfa_path)
     tokens = []
     try:
         tokens = lexer.tokenize(source_code)
-        print(f"Lexer berhasil: {len(tokens)} token ditemukan.")
     except LexicalError as e:
         print(str(e), file=sys.stderr)
         sys.exit(1) # Keluar jika ada error leksikal
     
-    # Opsional: Cetak token untuk debug
-    print("\n--- Daftar Token ---")
-    for token in tokens:
-        print(token)
-    print("--------------------\n")
+    # print("\n--- Daftar Token ---")
+    # for token in tokens:
+    #     print(token)
+    # print("--------------------\n")
 
     # --- 4. Jalankan Parser ---
-    print("\n--- 2. Menjalankan Parser ---")
-    
-    # Ambil aturan produksi dari rules.py
-    production_rules = setupProductionRules()
-    
-    # Inisialisasi parser (CFG) dengan token
-    parser = CFG(tokens)
-    
-    # Daftarkan aturan ke parser
-    parser.addRules(production_rules)
-    
-    parse_tree = None
+    parser = SyntaxAnalyzer()
     try:
-        # Mulai parsing dari non-terminal <Program> (default di CFG.parse())
-        parse_tree = parser.parse()
-        
-        # --- 5. Periksa Hasil Parsing ---
-        if parse_tree is not None:
-            # Parsing berhasil, TAPI kita harus cek apakah semua token terpakai.
-            final_token = parser.currentToken()
-            if final_token.token_type == "EOF":
-                print("\n✅ Parsing Berhasil!")
-                print("\n--- Parse Tree ---")
-                print(parse_tree)
-            else:
-                # Parsing selesai tapi masih ada sisa token
-                print("\n❌ Syntax Error: Parsing selesai, tapi masih ada sisa token yang tidak terduga.", file=sys.stderr)
-                print(f"Error di dekat token: {final_token} (Line: ??, Column: ??)", file=sys.stderr)
-                # Note: Info baris/kolom tidak disimpan di Token, jadi tidak bisa ditampilkan di sini.
-        else:
-            # Parsing Gagal (parser mengembalikan None)
-            print("\n❌ Syntax Error: Parsing gagal.", file=sys.stderr)
-            # Coba tunjukkan token tempat parser gagal
-            failed_token_index = parser.currentTokenID
-            if failed_token_index < len(tokens):
-                failed_at_token = tokens[failed_token_index]
-                print(f"Parser berhenti di dekat token #{failed_token_index}: {failed_at_token}", file=sys.stderr)
-            else:
-                print("Parser berhenti di akhir file (EOF).", file=sys.stderr)
-            print("Aktifkan print() di dalam 'models.py' (baris 112, 119, 122) untuk debug langkah-demi-langkah.", file=sys.stderr)
-
+        print(parser.parse(tokens=tokens))
+    except SyntaxError as e:
+        print(e)
     except Exception as e:
-        print(f"\nFATAL PARSER ERROR (mungkin aturan hilang atau bug di parser): {e}", file=sys.stderr)
+        print(f"\nFATAL PARSER ERROR: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         sys.exit(1)

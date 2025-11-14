@@ -219,7 +219,7 @@ class Lexer:
                         token_type = self.reserved_operators[lexeme_lower]
                 
                 # Tambahkan token ke daftar token
-                tokens.append(Token(token_type, lexeme))
+                tokens.append(Token(token_type, lexeme, end_line, end_col))
                 
                 # Perbarui posisi utama ke posisi setelah token yang ditemukan
                 position += len(lexeme)
