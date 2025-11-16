@@ -90,11 +90,11 @@ python syntax.py ../test/milestone-2/test_hyphenated.pas
 
 | Nama Anggota | NIM | Tugas |
 | :----------- | :-- | :---- |
-| Ivant Samuel Silaban | 13523129 | Mengimplementasikan kelas Lexer pada lexer.py.<br>Membuat logika looping untuk simulasi DFA dan prinsip Longest Match.<br>Mengimplementasikan kelas LexicalError dan logika error handling. |
-| Rafa Abdussalam Danadyaksa | 13523133 | Merancang Keseluruhan Diagram DFA<br>Mendefinisikan character classes, keywords, dan operator pada dfa.json<br>Melakukan pengujian dan Laporan Hasil Pengujian |
-| Muhamad Nazih Najmudin | 13523144 | Merancang Keseluruhan Diagram DFA<br>Mendefinisikan character classes, keywords, dan operator pada dfa.json<br>Menulis Laporan (BAB 2) |
-| Anas Ghazi Al Gifari | 13523159 | Mendefinisikan character classes, keywords, dan operator pada dfa.json<br>Menulis Landasan Teori (BAB I)<br>Menulis laporan bagian implementasi algoritma |
-| Muhammad Rizain Firdaus | 13523164 | Mendefinisikan character classes, keywords, dan operator pada dfa.json<br>Menulis laporan metodologi pengujian dan analisis hasil<br>Laporan Kesimpulan dan Saran |
+| Ivant Samuel Silaban | 13523129 | Mengimplementasikan kelas Lexer pada lexer.py.<br>Membuat logika looping untuk simulasi DFA dan prinsip Longest Match.<br>Mengimplementasikan kelas LexicalError dan logika error handling.<br>Merancang grammar dan struktur parser.<br>Memperbaiki bug yang ditemukan selama development dan mengatasi error pada fungsi-fungsi parsing.<br>Membuat test case untuk parser.<br>Menulis Landasan Teori (BAB I) pada Milestone 2. |
+| Rafa Abdussalam Danadyaksa | 13523133 | Merancang Keseluruhan Diagram DFA.<br>Mendefinisikan character classes, keywords, dan operator pada dfa.json.<br>Merancang grammar dan struktur parser.<br>Mengimplementasi Non terminal dan production rule.<br>Membuat test case untuk parser.<br>Melakukan pengujian dan dokumentasi Hasil Pengujian (BAB III) pada Milestone 1 dan 2. |
+| Muhamad Nazih Najmudin | 13523144 | Merancang Keseluruhan Diagram DFA.<br>Mendefinisikan character classes, keywords, dan operator pada dfa.json.<br>Merancang grammar dan struktur parser.<br>Mengimplementasi Parse Tree dan fungsi-fungsi parsing.<br>Menentukan strategi error handling.<br>Menulis Perancangan dan Implementasi (BAB II) pada Milestone 1 dan 2. |
+| Anas Ghazi Al Gifari | 13523159 | Mendefinisikan character classes, keywords, dan operator pada dfa.json.<br>Merancang grammar dan struktur parser.<br>Membuat test case untuk parser.<br>Menulis Landasan Teori (BAB I) dan Implementasi Algoritma pada Milestone 1.<br>Menulis Landasan Teori (BAB I), Lampiran, dan Referensi pada Milestone 2.<br>Menyusun kerangka konseptual laporan Milestone 2 secara menyeluruh. |
+| Muhammad Rizain Firdaus | 13523164 | Mendefinisikan character classes, keywords, dan operator pada dfa.json.<br>Merancang grammar dan struktur parser.<br>Menulis Metodologi pengujian dan Analisis Hasil pada Milestone 1.<br>Menulis Kesimpulan dan Saran (BAB IV). pada Milestone 1 dan 2. |
 
 ## Tautan
 
