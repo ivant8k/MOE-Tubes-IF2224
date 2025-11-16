@@ -6,36 +6,40 @@
   },
   "keywords": {
     "program": "KEYWORD",
-    "var": "KEYWORD",
-    "begin": "KEYWORD",
-    "end": "KEYWORD",
-    "if": "KEYWORD",
-    "then": "KEYWORD",
-    "else": "KEYWORD",
-    "while": "KEYWORD",
-    "do": "KEYWORD",
-    "for": "KEYWORD",
-    "to": "KEYWORD",
-    "downto": "KEYWORD",
+    "variabel": "KEYWORD",
+    "mulai": "KEYWORD",
+    "selesai": "KEYWORD",
+    "jika": "KEYWORD",
+    "maka": "KEYWORD",
+    "selama": "KEYWORD",
+    "lakukan": "KEYWORD",
+    "untuk": "KEYWORD",
+    "ke": "KEYWORD",
     "integer": "KEYWORD",
     "real": "KEYWORD",
     "boolean": "KEYWORD",
     "char": "KEYWORD",
-    "array": "KEYWORD",
-    "of": "KEYWORD",
-    "procedure": "KEYWORD",
-    "function": "KEYWORD",
-    "const": "KEYWORD",
-    "type": "KEYWORD",
+    "larik": "KEYWORD",
+    "dari": "KEYWORD",
+    "prosedur": "KEYWORD",
+    "fungsi": "KEYWORD",
+    "konstanta": "KEYWORD",
+    "tipe": "KEYWORD",
     "true": "KEYWORD",
-    "false": "KEYWORD"
+    "false": "KEYWORD",
+    "kasus": "KEYWORD",
+    "rekaman": "KEYWORD",
+    "ulangi": "KEYWORD",
+    "sampai": "KEYWORD",
+    "selain-itu": "KEYWORD",
+    "turun-ke": "KEYWORD"
   },
   "reserved_operators": {
-    "div": "ARITHMETIC_OPERATOR",
+    "bagi": "ARITHMETIC_OPERATOR",
     "mod": "ARITHMETIC_OPERATOR",
-    "and": "LOGICAL_OPERATOR",
-    "or": "LOGICAL_OPERATOR",
-    "not": "LOGICAL_OPERATOR"
+    "dan": "LOGICAL_OPERATOR",
+    "atau": "LOGICAL_OPERATOR",
+    "tidak": "LOGICAL_OPERATOR"
   },
   "start_state": "S_START",
   "final_states": {
@@ -91,8 +95,15 @@
     },
     "S_IDENTIFIER": {
       "letter": "S_IDENTIFIER",
+      "digit": "S_IDENTIFIER",
+      "-": "S_IDENTIFIER_HYPHEN"
+    },
+
+    "S_IDENTIFIER_HYPHEN": {
+      "letter": "S_IDENTIFIER",
       "digit": "S_IDENTIFIER"
     },
+    
     "S_INTEGER": {
       "digit": "S_INTEGER",
       ".": "S_REAL_DOT",

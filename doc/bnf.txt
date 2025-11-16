@@ -1,0 +1,84 @@
+<S> ::= <Program>
+
+<Program> ::= <ProgramHeader> <Block> "."
+
+<ProgramHeader> ::= "program" identifier ";"
+
+<Block> ::= <DeclarationPart> <CompoundStatement>
+
+<DeclarationPart> ::=  <ConstDeclaration> 
+                      | <TypeDeclaration>
+                      | <VarDeclarationPart>
+                      | <SubprogramDeclaration>
+                      | ε
+
+<ConstDeclaration> ::= "konstanta" identifier "=" <Expression> ";"
+
+<TypeDeclaration> ::= "tipe" identifier "=" <Type> ";"
+
+<VarDeclarationPart> ::= "variabel" <VarDeclaration> ";" | ε
+<VarDeclaration> ::= <IdentifierList> ":" <Type>
+
+<IdentifierList> ::= identifier "," <IdentifierList>
+                   | identifier
+
+<Type> ::= "integer"
+         | "real"
+         | "boolean"
+         | "char"
+         | "string"
+         | <ArrayType>
+         | identifier
+
+<ArrayType> ::= "larik" "[" <Range> "]" "dari" <Type>
+
+<Range> ::= <Expression> ".." <Expression>
+
+<SubprogramDeclaration> ::= <ProcedureDeclaration> | <FunctionDeclaration>
+
+<ProcedureDeclaration> ::= "prosedur" identifier <ProcedureDeclarationPrime>
+<ProcedureDeclarationPrime> ::= "(" <FormalParameterList> ")" ";" <Block> ";"
+                              | ";" <Block> ";"
+
+<FunctionDeclaration> ::= "fungsi" identifier <FunctionDeclarationPrime>
+<FunctionDeclarationPrime> ::= "(" <FormalParameterList> ")" ":" <Type> ";" <Block> ";"
+                             | ":" <Type> ";" <Block> ";"
+
+<FormalParameterList> ::= <FormalParameterGroup> <FormalParameterListPrime>
+<FormalParameterListPrime> ::= ";" <FormalParameterGroup> <FormalParameterListPrime>
+                             | ε
+
+<FormalParameterGroup> ::= <IdentifierList> ":" <Type>
+
+
+<CompoundStatement> ::= "mulai" <StatementList> "selesai"
+
+<StatementList> ::= <Statement> ";" <StatementList>
+                  | ε
+
+<Statement> ::= <AssignmentStatement>
+              | <IfStatement>
+              | <WhileStatement>
+              | <ForStatement>
+              | <ProcedureCall>
+              | <CompoundStatement>
+              | ε
+
+
+<AssignmentStatement> ::= identifier ":=" <Expression>
+                        | identifier "[" <Expression> "]" ":=" <Expression>
+
+<IfStatement> ::= "jika" <Expression> "maka" <Statement> <IfStatementPrime>
+<IfStatementPrime> ::= "selain-itu" <Statement>
+                     | ε
+
+<WhileStatement> ::= "selama" <Expression> "lakukan" <Statement>
+
+<ForStatement> ::= "untuk" identifier ":=" <Expression> <ForDirection> <Expression> "lakukan" <Statement>
+
+<ProcedureCall> ::= identifier <ProcedureCallPrime>
+<ProcedureCallPrime> ::= "(" <ParameterList> ")" 
+
+<ParameterList> ::= <Expression> <ParameterListPrime>
+<ParameterListPrime> ::= "," <Expression> <ParameterListPrime>
+                       | ε
