@@ -3,6 +3,9 @@
 <div align="center">
   <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/Pascal-00599C?style=for-the-badge&logo=pascal&logoColor=white" alt="Pascal" />
+  <br/><br/>
+  <a href="https://git.io/typing-svg">
+  <img src="https://readme-typing-svg.demolab.com?font=Baloo&size=48&duration=3600&pause=600&color=FFB6C1&center=true&vCenter=true&width=600&lines=Moe+Moe+Kyun~" alt="Typing SVG" />
 </div>
 
 ## Identitas Kelompok
@@ -20,12 +23,13 @@
 **Pascal-S Compiler** merupakan implementasi *compiler* untuk **subset bahasa Pascal** yang dirancang sebagai bagian dari tugas besar mata kuliah **IF2224 - Teori Bahasa Formal dan Otomata**.
 
 Compiler ini dibangun melalui beberapa tahapan utama sebagai berikut:
-1. **Lexical Analysis (Lexer)**
-   Mengubah *source code* menjadi sekumpulan *token* yang merepresentasikan elemen dasar bahasa seperti *keyword*, *identifier*, *operator*, *literal*, dan *delimiter*. Tahap ini memeriksa validitas karakter dan pola dasar dari kode sumber.
-2. **Syntax Analysis (Parser)**
-3. **Semantic Analysis**
-4. **Intermediate Code Generation**
-5. **Interpreter**
+### 1. **Lexical Analysis (Lexer)**
+Tahap pertama dalam proses kompilasi adalah *lexical analysis*, yaitu proses mengubah *source code* menjadi sekumpulan token yang merepresentasikan elemen dasar bahasa seperti *keyword*, *identifier*, *operator*, *literal*, dan *delimiter*. Pada tahap ini, *lexer* membaca karakter demi karakter dari kode sumber dan mengelompokkannya berdasarkan pola tertentu yang telah ditentukan oleh aturan bahasa Pascal-S untuk memeriksa validitas karakter dan pola dasar dari kode sumber.
+### 2. **Syntax Analysis (Parser)**
+Setelah *lexer* menghasilkan sekumpulan token, tahap selanjutnya adalah *syntax analysis*, yaitu proses menyusun token-token tersebut menjadi *parse tree* yang merepresentasikan struktur program secara hierarkis berdasarkan aturan *grammar* Pascal-S. Pada tahap ini, *parser* menganalisis urutan token menggunakan *context-free grammar* untuk menentukan apakah bentuk program valid secara sintaks.
+### 3. **Semantic Analysis**
+### 4. **Intermediate Code Generation**
+### 5. **Interpreter**
 
 ## Requirements
 
@@ -68,6 +72,20 @@ python lexer.py ../test/milestone-1/input-1.pas
 python lexer.py ../test/milestone-1/input-1.pas ../test/milestone-1/output-1.txt
 ```
 
+### Milestone 2 - Parser
+
+#### Output ke Terminal
+```bash
+cd src
+python syntax.py <source_file.pas>
+```
+
+#### Contoh Penggunaan
+```bash
+# Output ke terminal
+python syntax.py ../test/milestone-2/test_hyphenated.pas
+```
+
 ## Pembagian Tugas
 
 | Nama Anggota | NIM | Tugas |
@@ -80,5 +98,6 @@ python lexer.py ../test/milestone-1/input-1.pas ../test/milestone-1/output-1.txt
 
 ## Tautan
 
-Dokumen Terpusat: https://docs.google.com/document/d/1w0GmHW5L0gKZQWbgmtJPFmOzlpSWBknNPdugucn4eII/edit?tab=t.0#heading=h.gauvvmq6h9pp  
-Milestone 1: https://docs.google.com/document/d/1w0GmHW5L0gKZQWbgmtJPFmOzlpSWBknNPdugucn4eII/edit?tab=t.0#heading=h.gauvvmq6h9pp
+* [Dokumen Terpusat](https://docs.google.com/document/d/1dzZKVdEjTrXSutzDch2dXB5dbkM6w2DJawScLp4VhYI/edit?tab=t.0#heading=h.gauvvmq6h9pp)
+* [Milestone 1](https://docs.google.com/document/d/1w0GmHW5L0gKZQWbgmtJPFmOzlpSWBknNPdugucn4eII/edit?tab=t.0#heading=h.gauvvmq6h9pp)
+* [Milestone 2](https://docs.google.com/document/d/1G_pC2dltQ5Q-iQ3xOpmLIl3XWLDcLfodN8jdiaJBA0Q/edit?tab=t.0#heading=h.gauvvmq6h9pp)
