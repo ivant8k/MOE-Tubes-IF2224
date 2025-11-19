@@ -2,6 +2,8 @@ import sys, os
 
 from lexical.lexer import Lexer, LexicalError
 from syntax.syntax import SyntaxAnalyzer, SyntaxError
+from semantic.ast_converter import ASTConverter
+# from semantic.semantic_analyzer import SemanticAnalyzer
 
 def main():
     """
@@ -48,7 +50,8 @@ def main():
     # --- 4. Jalankan Parser ---
     parser = SyntaxAnalyzer()
     try:
-        print(parser.parse(tokens=tokens))
+        parser_tree = parser.parse(tokens=tokens)
+        print(parser_tree)
     except SyntaxError as e:
         print(e)
     except Exception as e:
@@ -56,6 +59,45 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
+    # --- 4. Jalankan AST Converter ---
+    try:
+        converter = ASTConverter()
+        ast = converter.convert(parser_tree)
+        print("\n=== Abstract Syntax Tree (AST) ===")
+        print(ast)
+    except Exception as e:
+        print(f"AST Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return
+    
+    # --- 5. Jalankan Semantic Analyzer ---
+    # try:
+    #     analyzer = SemanticAnalyzer()
+    #     analyzer.visit(ast)
+        
+    #     print("\n=== Compilation Successful ===")
+    #     print("\nSymbol Table (Tab):")
+    #     # Skip dummy index 0
+    #     for idx, entry in enumerate(analyzer.symbol_table.tab):
+    #         if idx == 0: continue
+    #         print(f"{idx}: {entry}")
+        
+    #     print("\nBlock Table (BTab):")
+    #     for idx, entry in enumerate(analyzer.symbol_table.btab):
+    #         print(f"{idx}: {entry}")
+
+    #     # Opsional: Print Array Table jika ada
+    #     if analyzer.symbol_table.atab:
+    #         print("\nArray Table (ATab):")
+    #         for idx, entry in enumerate(analyzer.symbol_table.atab):
+    #             print(f"{idx}: {entry}")
+            
+    # except Exception as e:
+    #     print(f"Semantic Error: {e}")
+    #     traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()
