@@ -1,6 +1,8 @@
-# nama file: rules.py
-from models import NonTerminal, Token, TokenType, Epsilon
-from typing import List, Dict, Union, Any
+from typing import List, Dict, Union
+
+from models.token import Token, TokenType
+from models.parsetree import NonTerminal
+from models.cfg import Epsilon
 
 # Tipe data untuk kejelasan, meskipun tidak divalidasi oleh 'models.py'
 Symbol = Union[NonTerminal, Token, TokenType, Epsilon]

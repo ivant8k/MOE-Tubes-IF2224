@@ -2,7 +2,8 @@ import json
 import sys
 import os
 from typing import List
-from models import Token, TokenType, Lexeme
+
+from models.token import Token
 
 class LexicalError(Exception):
     """Custom exception untuk error leksikal."""
