@@ -260,8 +260,9 @@ def main():
         print(f"Output Error: Output file harus memiliki ekstensi .txt. Diberikan: '{output_file_path}'", file=sys.stderr)
         sys.exit(1)
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    dfa_path = os.path.join(script_dir, "dfa.json")
+    # Mendapatkan path absolut ke dfa.json
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # src/lexical/
+    DFA_FILE_PATH = os.path.join(BASE_DIR, 'dfa.json')
     
     try:
         with open(source_file_path, 'r') as f:
@@ -270,7 +271,7 @@ def main():
         print(f"Error: Input file tidak ditemukan di '{source_file_path}'", file=sys.stderr)
         sys.exit(1)
         
-    lexer = Lexer(dfa_path)
+    lexer = Lexer(DFA_FILE_PATH)
     
     try:
         tokens = lexer.tokenize(source_code)
