@@ -1,8 +1,8 @@
 from typing import List, Dict, Union
 
-from models.token import Token, TokenType
-from models.parsetree import NonTerminal
-from models.cfg import Epsilon
+from lexical.token import Token, TokenType
+from syntax.parsetree import NonTerminal
+from syntax.cfg import Epsilon
 
 # Tipe data untuk kejelasan, meskipun tidak divalidasi oleh 'models.py'
 Symbol = Union[NonTerminal, Token, TokenType, Epsilon]

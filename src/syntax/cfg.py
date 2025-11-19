@@ -1,7 +1,7 @@
 from typing import Any, List, Dict, Callable
 
-from models.token import Token, TokenType, Lexeme
-from models.parsetree import NonTerminal, Node
+from lexical.token import Token, TokenType, Lexeme
+from syntax.parsetree import NonTerminal, Node
 
 # ===== Class for CFG =====
 

@@ -5,9 +5,9 @@ from typing import List
 from lexical.lexer import Lexer, LexicalError
 from syntax.rules import getAllProductionRules
 
-from models.cfg import CFG
-from models.parsetree import Node
-from models.token import Token
+from syntax.cfg import CFG
+from syntax.parsetree import Node
+from lexical.token import Token
 
 class SyntaxError(Exception):
     """Custom exception untuk error sintaks."""

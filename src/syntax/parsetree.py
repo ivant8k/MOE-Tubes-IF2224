@@ -1,6 +1,6 @@
 from typing import List
 
-from models.token import Token
+from lexical.token import Token
 
 # ===== Class for Parse Tree =====
 

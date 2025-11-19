@@ -3,7 +3,7 @@ import sys
 import os
 from typing import List
 
-from models.token import Token
+from lexical.token import Token
 
 class LexicalError(Exception):
     """Custom exception untuk error leksikal."""
