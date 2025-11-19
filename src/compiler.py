@@ -19,12 +19,9 @@ def main():
         print(f"Input Error: Source file harus berekstensi .pas. Diberikan: '{source_file_path}'", file=sys.stderr)
         sys.exit(1)
 
-    # Tentukan path ke dfa.json (diasumsikan berada di direktori yang sama)
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    dfa_path = os.path.join(script_dir, "dfa.json")
-    if not os.path.exists(dfa_path):
-        print(f"Fatal Error: 'dfa.json' tidak ditemukan di '{script_dir}'", file=sys.stderr)
-        sys.exit(1)
+    # Mendapatkan path absolut ke dfa.json
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # src/syntax/
+    DFA_FILE_PATH = os.path.join(BASE_DIR, 'lexical', 'dfa.json')
 
     # --- 2. Baca Source Code ---
     try:
@@ -35,7 +32,7 @@ def main():
         sys.exit(1)
         
     # --- 3. Jalankan Lexer ---
-    lexer = Lexer(dfa_path)
+    lexer = Lexer(DFA_FILE_PATH)
     tokens = []
     try:
         tokens = lexer.tokenize(source_code)
