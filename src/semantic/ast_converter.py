@@ -23,7 +23,6 @@ class ASTConverter:
             clean_name = str(node.value).replace('<', '').replace('>', '').replace('-', '_')
             
             # --- MAPPING MANUAL ---
-            # Sambungkan nama node parser ke nama fungsi converter Anda
             if clean_name == "VarDeclOpt": 
                 method_name = "_convert_VarDeclarationPart"
             elif clean_name == "ConstDeclOpt":
@@ -35,8 +34,7 @@ class ASTConverter:
             else:
                 # Default: <Program> -> _convert_Program
                 method_name = '_convert_' + clean_name
-            
-            # Panggil method
+
             method = getattr(self, method_name, self._generic_visit)
             return method(node)
             
@@ -53,20 +51,30 @@ class ASTConverter:
         return token.lexeme if token else ""
     
     def _get_token(self, node_or_token) -> Optional[Token]:
-        """RECURSIVE: Cari token daun paling kiri (leaf) secara paksa"""
-        # 1. Jika input sudah berupa Token
+        """
+        REKURSI PINTAR: Cari token daun (leaf) dengan menelusuri
+        semua anak sampai ketemu yang bukan EPSILON.
+        """
+        # 1. Jika input sudah berupa Token, kembalikan langsung
         if isinstance(node_or_token, Token):
             return node_or_token
         
         # 2. Jika input adalah Node
         if isinstance(node_or_token, Node):
-            # Cek apakah value node ini adalah Token
+            # Cek value node itu sendiri
             if isinstance(node_or_token.value, Token):
                 return node_or_token.value
             
-            # REKURSI: Jika punya anak, gali ke anak pertama
+            # Cek string value untuk EPSILON
+            if str(node_or_token.value) == "EPSILON":
+                return None
+
+            # ITERASI ANAK (DFS): 
             if node_or_token.children:
-                return self._get_token(node_or_token.children[0])
+                for child in node_or_token.children:
+                    found = self._get_token(child)
+                    if found:
+                        return found
             
         return None
 
@@ -111,7 +119,6 @@ class ASTConverter:
 
         for child in node.children:
             # 1. Filter: Abaikan jika child adalah Token mentah (bukan Node)
-            #    atau jika child adalah Epsilon
             if isinstance(child, Node):
                 if str(child.value) == "EPSILON":
                     continue
@@ -141,13 +148,11 @@ class ASTConverter:
         """Collect constant declarations recursively"""
         if not node.children or str(node.children[0].value) == "EPSILON":
             return
-        
-        # First child: <ConstDeclaration>
+
         const_decl = self.visit(node.children[0])
         if const_decl:
             const_list.append(const_decl)
-        
-        # Recursive part
+
         if len(node.children) > 1:
             self._collect_const_decls(node.children[1], const_list)
 
@@ -199,7 +204,6 @@ class ASTConverter:
         return []
     
     def _convert_VarDeclList(self, node: Node) -> List[VarDeclNode]:
-        # Base Case: Epsilon
         if not node.children or str(node.children[0].value) == "EPSILON":
             return []
 
@@ -211,7 +215,6 @@ class ASTConverter:
             vars_list.extend(current_decls)
 
         # 2. Rekursi ke tail (VarDeclList berikutnya)
-        # Biasanya ada di index 2 (setelah titik koma)
         if len(node.children) > 2:
             next_decls = self._convert_VarDeclList(node.children[2])
             vars_list.extend(next_decls)
@@ -258,7 +261,6 @@ class ASTConverter:
         """
         Handle: <SimpleType> -> integer | boolean | char
         """
-        # Gunakan helper rekursif baru untuk ambil 'integer'
         type_name = self._get_lexeme(node) 
         return TypeNode(type_name=type_name)
 
@@ -316,11 +318,9 @@ class ASTConverter:
         name = self._get_lexeme(node.children[1])
         params = []
         
-        # Check if there are parameters
         if len(node.children) > 3 and str(node.children[3].value) != "RPAREN":
             params = self.visit(node.children[3])
-        
-        # Find the block (skip semicolons)
+
         block_idx = len(node.children) - 2
         block = self.visit(node.children[block_idx])
         
@@ -423,7 +423,6 @@ class ASTConverter:
 
     def _convert_AssignmentStatement(self, node: Node) -> AssignNode:
         """Handle: IDENTIFIER := <Expression>"""
-        # First child is IDENTIFIER token
         if isinstance(node.children[0].value, Token):
             target_name = node.children[0].value.lexeme
         else:
@@ -599,10 +598,14 @@ class ASTConverter:
         return BinOpNode(op=op, left=left, right=right)
 
     def _convert_SimpleExpression(self, node: Node):
-        """Handle expression with + and - operators"""
+        """
+        Tree Structure: <SimpleExpression> -> <SignedTerm> <SimpleExpressionPrime>
+        """
         left = self.visit(node.children[0])
+
         if len(node.children) > 1:
             return self._visit_simple_prime(node.children[1], left)
+            
         return left
 
     def _visit_simple_prime(self, node: Node, left):
@@ -642,43 +645,73 @@ class ASTConverter:
             
         return new_left
     
+    def _convert_SignedTerm(self, node: Node):
+        """
+        Handle: <SignedTerm> -> <SignOpt> <Term>
+        """
+        unary_op = None
+        
+        # 1. Cek SignOpt
+        sign_node = node.children[0]
+        sign_token = self._get_token(sign_node)
+        
+        if sign_token and sign_token.lexeme == "-":
+            unary_op = "-"
+            
+        # 2. Ambil Term (Anak ke-1)
+        term_val = self.visit(node.children[1])
+
+        if unary_op:
+            return UnaryOpNode(op=unary_op, expr=term_val)
+            
+        return term_val
+    
     def _get_operator_lexeme(self, node: Node) -> str:
         """Helper aman untuk mengambil operator (+, -, *, dll)"""
-        # Coba ambil langsung jika node itu sendiri adalah token wrapper
         lex = self._get_lexeme(node)
         if lex: return lex
-        
-        # Jika node membungkus token di anak pertama (misal <AddOp> -> +)
+
         if node.children:
             return self._get_lexeme(node.children[0])
         return "?"
 
     def _convert_Factor(self, node: Node):
-        # 1. Coba ambil token terdalam
         token = self._get_token(node)
-        
         if not token:
-            # Cek jika ini Parenthesis ( Expression )
-            # Biasanya strukturnya: <Factor> -> ( <Expression> )
+            # Cek ( Expression )
             if len(node.children) > 1:
-                 if self._get_lexeme(node.children[0]) == "(":
+                 # Cek manual lexeme anak pertama untuk '('
+                 first_lex = self._get_lexeme(node.children[0])
+                 if first_lex == "(":
                      return self.visit(node.children[1])
             
             # Cek Variable
-            if node.children and str(node.children[0].value) == "<Variable>":
+            if node.children and "Variable" in str(node.children[0].value):
                 return self._convert_Variable(node.children[0])
                 
             return NoOpNode()
 
-        # 2. Proses Token
-        if token.token_type == "NUMBER":
-            val = float(token.lexeme) if '.' in token.lexeme else int(token.lexeme)
+        # 2. PROSES TOKEN (Angka, String, Var)
+        lexeme = token.lexeme
+        
+        # Deteksi Angka (Handle int dan float)
+        clean_lex = lexeme.replace('.', '', 1).replace('-', '', 1)
+        if clean_lex.isdigit():
+            val = float(lexeme) if '.' in lexeme else int(lexeme)
             return NumNode(value=val)
             
-        elif token.token_type == "STRING_LITERAL":
-            return StringNode(value=token.lexeme)
+        # Deteksi String
+        if (lexeme.startswith("'") and lexeme.endswith("'")) or \
+           (lexeme.startswith('"') and lexeme.endswith('"')):
+            return StringNode(value=lexeme[1:-1])
             
-        elif token.token_type == "IDENTIFIER":
-            return VarNode(name=token.lexeme)
+        # Deteksi Identifier / Variable sederhana
+        if lexeme[0].isalpha() or lexeme.startswith('_'):
+            return VarNode(name=lexeme)
+            
+        # Deteksi Operator Unary (NOT / tidak)
+        if lexeme.lower() == "tidak" or lexeme.lower() == "not":
+             if len(node.children) > 1:
+                 return UnaryOpNode(op=lexeme, expr=self.visit(node.children[1]))
             
         return NoOpNode()
