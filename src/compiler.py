@@ -51,7 +51,7 @@ def main():
     parser = SyntaxAnalyzer()
     try:
         parser_tree = parser.parse(tokens=tokens)
-        print(parser_tree)
+        # print(parser_tree)
     except SyntaxError as e:
         print(e)
     except Exception as e:
