@@ -114,21 +114,42 @@ class SymbolTable:
 
     def _init_reserved_idn(self):
         """Inisialisasi reserved identifiers ke dalam symbol table"""
-        reserved_idns = [
-            ("INTEGER", ObjectKind.TYPE, TypeKind.INTEGER),
-            ("BOOLEAN", ObjectKind.TYPE, TypeKind.BOOLEAN),
-            ("CHAR", ObjectKind.TYPE, TypeKind.CHAR),
-            ("REAL", ObjectKind.TYPE, TypeKind.REAL),
-            ("TRUE", ObjectKind.CONSTANT, TypeKind.BOOLEAN),
-            ("FALSE", ObjectKind.CONSTANT, TypeKind.BOOLEAN),
+        # reserved_idns = [
+        #     ("INTEGER", ObjectKind.TYPE, TypeKind.INTEGER),
+        #     ("BOOLEAN", ObjectKind.TYPE, TypeKind.BOOLEAN),
+        #     ("CHAR", ObjectKind.TYPE, TypeKind.CHAR),
+        #     ("REAL", ObjectKind.TYPE, TypeKind.REAL),
+        #     ("TRUE", ObjectKind.CONSTANT, TypeKind.BOOLEAN),
+        #     ("FALSE", ObjectKind.CONSTANT, TypeKind.BOOLEAN),
+        # ]
+        # for name, obj_kind, type_kind in reserved_idns:
+        #     entry = TabEntry(
+        #         identifier=name,
+        #         obj=obj_kind,
+        #         type=type_kind,
+        #         lev=0,
+        #         adr=0
+        #     )
+        #     self.tab.append(entry)
+        #     self.tx += 1
+
+        # Mapping tipe dasar ke nilai enum TypeKind
+        reserved_types = [
+            ("INTEGER", TypeKind.INTEGER),
+            ("BOOLEAN", TypeKind.BOOLEAN),
+            ("CHAR",    TypeKind.CHAR),
+            ("REAL",    TypeKind.REAL),
         ]
-        for name, obj_kind, type_kind in reserved_idns:
-            entry = TabEntry(
-                identifier=name,
-                obj=obj_kind,
-                type=type_kind,
-                lev=0,
-                adr=0
-            )
-            self.tab.append(entry)
-            self.tx += 1
+        
+        reserved_consts = [
+            ("TRUE",  TypeKind.BOOLEAN, 1),
+            ("FALSE", TypeKind.BOOLEAN, 0),
+        ]
+
+        # Masukkan Tipe
+        for name, kind in reserved_types:
+            self.enter(name, ObjectKind.TYPE, kind, 0, 1, 0, 0);
+
+        # Masukkan Konstanta
+        for name, kind, value in reserved_consts:
+            self.enter(name, ObjectKind.CONSTANT, kind, 0, 1, 0, value);
