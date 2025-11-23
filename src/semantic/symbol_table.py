@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from enum import Enum
 
 class ObjectKind(Enum):
@@ -153,3 +153,170 @@ class SymbolTable:
         # Masukkan Konstanta
         for name, kind, value in reserved_consts:
             self.enter(name, ObjectKind.CONSTANT, kind, 0, 1, 0, value);
+
+    def _init_global_block(self):
+        """Membuat block global (program) di btab[0]"""
+        # Entry btab pertama buat global scope
+        self.btab.append(TabEntry(last=0, lpar=0, psze=0, vsze=0))
+        self.bx = 0
+        self.display.append(0)  # Level 0 di display
+
+        # Update 'last' di btab[0] bair nunjuk ke last identifier, yaitu reserved words (asumsi di level 0)
+        self.btab[0].last = self.tx
+
+    def enter(self, name:str, obj:ObjectKind, type_kind:TypeKind, ref:int, nrm:int, lev:int, adr:int) -> int:
+        """
+        Generic method untuk memasukkan entry baru ke 'tab'.
+        Akan mengembalikan index entry baru di tab.
+        Insert di ujung tab, abis itu update link dari btab
+        Args:
+            name (str): Nama identifier
+            obj (ObjectKind): Kelas objek
+            type_kind (TypeKind): Tipe dasar
+            ref (int): Pointer ke tabel lain jika komposit
+            nrm (int): Normal variable (1) atau var parameter (0)
+            lev (int): Lexical level
+            adr (int): Address/offset
+        """
+        # bikin object TabEntry
+        new_entry = TabEntry(
+            identifier=name,
+            link = 0, # nanti diupdate sama semantic analyzer
+            obj=obj,
+            type=type_kind,
+            ref=ref,
+            nrm=nrm,
+            lev=lev,
+            adr=adr
+        )
+        self.tab.append(new_entry)
+        self.tx += 1
+        current_idx = self.tx
+
+        # Update link
+        if len(self.display) > 0:
+            # Ambil index btab untuk level saat ini
+            btab_idx = self.display[lev] if lev < len(self.display) else self.display[-1]
+
+            # Link entry baru yang nunjuk ke variable terakhir di scope ini
+            self.tab[current_idx].link = self.btab[btab_idx].last
+
+            # Update last pointer di btab biar nunjuk ke entry baru
+            self.btab[btab_idx].last =current_idx
+
+        return current_idx  # Kembalikan index entry baru
+    
+    def add_variable(self, name:str, type_kind: TypeKind, ref: int = 0):
+        """
+        Menambah variabel ke scope saat ini.
+        Penting buat Code Generation karena Compiler perlu tahu di alamat memori relatif keberapa (offset) sebuah variabel disimpan dalam stack frame.
+        Args:
+            name (str): Nama variabel
+            type_kind (TypeKind): Tipe dasar variabel
+            ref (int): Pointer ke tabel lain jika komposit
+        """
+        # Cek duplikasi
+        if self.lookup_local(name) != 0:
+            raise ValueError(f"Duplicate identifier '{name}' in the same scope.")
+        
+        current_btab_idx = self.display[self.current_level]
+
+        size = 1
+        if type_kind == TypeKind.ARRAY:
+            size = self.atab[ref-1].size # ref-1 karena ref biasanya 1-based index
+
+        current_disp = self.btab[current_btab_idx].vsze
+        self.enter(
+            name=name,
+            obj=ObjectKind.VARIABLE,
+            type_kind=type_kind,
+            ref=ref,
+            nrm=1,
+            lev=self.current_level,
+            adr=current_disp
+        )
+
+        # Update ukuran variabel lokal di block ini
+        self.btab[current_btab_idx].vsze += size
+
+    def add_constant(self, name: str, type_kind: TypeKind, value: Any):
+        """Deklarasi Konstanta"""
+        self.enter(
+            name=name,
+            obj=ObjectKind.CONSTANT,
+            type_kind=type_kind,
+            ref=0,
+            nrm=1,
+            lev=self.current_level,
+            adr=value  # Simpan nilai konstanta di adr
+        )
+
+    def enter_scope(self, scope_name: str):
+        """
+        Masuk ke scope baru (Procedure/Function).
+        Membuat entry baru di btab dan update display.
+        """
+        self.current_level += 1
+
+        # Buat entry block baru
+        self.btab.append(BTabEntry(last=0, lpar=0, psze=0, vsze=0))
+        self.bx += 1
+
+        # Update display
+        if len(self.display) <= self.current_level:
+            self.display.append(self.bx)
+        else:
+            self.display[self.current_level] = self.bx
+
+    def exit_scope(self):
+        """
+        Keluar dari scope saat ini.
+        Cuma menurunkan level lexical dan reset display
+        """
+        if self.current_level > 0:
+            self.display[self.current_level] = 0 # Reset
+            self.current_level -= 1
+
+    def lookup(self, name: str) -> int:
+        """
+        Implementasi dari aturan Static Scoping dan Shadowing.
+        Mencari identifier mulai dari scope terdalam ke global.
+        Mengembalikan index di tab, atau 0 jika tidak ditemukan.
+        args:
+            name (str): Nama identifier yang dicari
+        """
+        for lev in range(self.current_level, -1, -1):
+            btab_idx = self.display[lev]
+            curr = self.btab[btab_idx].last # mulai dari identifier terakhir di block ini
+            # Transverse linked list (field 'link')
+            while curr > 0: # 0 dianggap null/sentinel
+                entry = self.tab[curr]
+                if entry.identifier == name:
+                    return curr # Ditemukan
+                curr = entry.link
+
+        return 0  # Tidak ditemukan
+
+    def lookup_local (self, name: str) -> int:
+        """
+        Pencarian identifier khusus validasi deklarasi
+        Lookup biasa akan memprotes kalo x global sudah ada -> padahal kita mau deklarasi x lokal
+        """
+        btab_idx = self.display[self.current_level]
+        curr = self.btab[btab_idx].last
+        while curr > 0:
+            entry = self.tab[curr]
+            if entry.identifier == name:
+                return curr
+            curr = entry.link
+        return 0
+    
+    def get_entry(self, idx: int) -> Optional[TabEntry]:
+        """
+        Safety Wrapper biar ga crash kalo indexnya invalid (ada boundary check)
+        Mengambil TabEntry berdasarkan index di tab
+        Args:
+            idx (int): Index di tab"""
+        if 0 < idx <= self.tx:
+            return self.tab[idx]
+        return None
