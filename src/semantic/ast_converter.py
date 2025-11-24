@@ -31,6 +31,12 @@ class ASTConverter:
                 method_name = "_convert_TypeDeclarationPart"
             elif clean_name == "SubprogDeclList":
                 method_name = "_convert_SubprogDeclList"
+            elif clean_name == "ConstList": 
+                method_name = "_convert_ConstList"
+            elif clean_name == "TypeList": 
+                method_name = "_convert_TypeList"
+            elif clean_name == "VarDeclList": 
+                method_name = "_convert_VarDeclList"
             else:
                 # Default: <Program> -> _convert_Program
                 method_name = '_convert_' + clean_name
@@ -135,61 +141,58 @@ class ASTConverter:
         return decls
     # ==================== Constant Declarations ====================
     def _convert_ConstDeclarationPart(self, node: Node) -> List[ConstDeclNode]:
-        """Handle: KONSTAN <ConstDeclList>"""
-        if not node.children or str(node.children[0].value) == "EPSILON":
-            return []
+        # <ConstDeclOpt> -> konstanta <ConstList> | EPSILON
+        if not node.children or str(node.children[0].value) == "EPSILON": return []
         
-        const_list = []
-        if len(node.children) > 1:
-            self._collect_const_decls(node.children[1], const_list)
-        return const_list
+        # Anak ke-1 adalah <ConstList>
+        return self.visit(node.children[1])
 
-    def _collect_const_decls(self, node: Node, const_list: List[ConstDeclNode]):
-        """Collect constant declarations recursively"""
-        if not node.children or str(node.children[0].value) == "EPSILON":
-            return
-
-        const_decl = self.visit(node.children[0])
-        if const_decl:
-            const_list.append(const_decl)
-
-        if len(node.children) > 1:
-            self._collect_const_decls(node.children[1], const_list)
-
-    def _convert_ConstDeclaration(self, node: Node) -> ConstDeclNode:
-        """Handle: IDENTIFIER = <Expression> ;"""
-        const_name = self._get_lexeme(node.children[0])
-        value = self.visit(node.children[2])  # Expression
-        return ConstDeclNode(const_name=const_name, value=value)
+    def _convert_ConstList(self, node: Node) -> List[ConstDeclNode]:
+        # Struktur: ID(0) = (1) Expr(2) ;(3) List(4)
+        if not node.children or str(node.children[0].value) == "EPSILON": return []
+        
+        consts = []
+        
+        # 1. BUAT NODE DEKLARASI MANUAL (Jangan cuma visit anak ke-0)
+        const_name = self._get_lexeme(node.children[0]) # Ambil nama ID
+        value = self.visit(node.children[2])            # Ambil Value
+        
+        current_decl = ConstDeclNode(const_name=const_name, value=value)
+        consts.append(current_decl)
+        
+        # 2. Rekursi ke ConstList berikutnya (Index 4)
+        if len(node.children) > 4:
+            rest = self.visit(node.children[4]) # Visit ConstList selanjutnya
+            if rest: consts.extend(rest)
+            
+        return consts
 
     # ==================== Type Declarations ====================
     def _convert_TypeDeclarationPart(self, node: Node) -> List[TypeDeclNode]:
-        """Handle: TIPE <TypeDeclList>"""
-        if not node.children or str(node.children[0].value) == "EPSILON":
-            return []
-        
-        type_list = []
-        if len(node.children) > 1:
-            self._collect_type_decls(node.children[1], type_list)
-        return type_list
+        # <TypeDeclOpt> -> tipe <TypeList> | EPSILON
+        if not node.children or str(node.children[0].value) == "EPSILON": return []
+        return self.visit(node.children[1])
 
-    def _collect_type_decls(self, node: Node, type_list: List[TypeDeclNode]):
-        """Collect type declarations recursively"""
-        if not node.children or str(node.children[0].value) == "EPSILON":
-            return
+    def _convert_TypeList(self, node: Node) -> List[TypeDeclNode]:
+        # Struktur: ID(0) = (1) Type(2) ;(3) List(4)
+        if not node.children or str(node.children[0].value) == "EPSILON": return []
         
-        type_decl = self.visit(node.children[0])
-        if type_decl:
-            type_list.append(type_decl)
+        types = []
         
-        if len(node.children) > 1:
-            self._collect_type_decls(node.children[1], type_list)
-
-    def _convert_TypeDeclaration(self, node: Node) -> TypeDeclNode:
-        """Handle: IDENTIFIER = <Type> ;"""
-        type_name = self._get_lexeme(node.children[0])
-        type_value = self.visit(node.children[2])
-        return TypeDeclNode(type_name=type_name, value=type_value)
+        # 1. BUAT NODE DEKLARASI MANUAL
+        type_name = self._get_lexeme(node.children[0]) # Ambil nama Tipe (misal TNumbers)
+        type_val = self.visit(node.children[2])        # Ambil definisi Tipe (misal ArrayType)
+        
+        # BUNGKUS dalam TypeDeclNode
+        current_decl = TypeDeclNode(type_name=type_name, value=type_val)
+        types.append(current_decl)
+        
+        # 2. Rekursi ke TypeList berikutnya (Index 4)
+        if len(node.children) > 4:
+            rest = self.visit(node.children[4])
+            if rest: types.extend(rest)
+            
+        return types
 
     # ==================== Variable Declarations ====================
     def _convert_VarDeclarationPart(self, node: Node) -> List[VarDeclNode]:
@@ -208,13 +211,10 @@ class ASTConverter:
             return []
 
         vars_list = []
-
-        # 1. Ambil deklarasi di head (VarDeclaration)
         current_decls = self.visit(node.children[0])
         if current_decls:
             vars_list.extend(current_decls)
 
-        # 2. Rekursi ke tail (VarDeclList berikutnya)
         if len(node.children) > 2:
             next_decls = self._convert_VarDeclList(node.children[2])
             vars_list.extend(next_decls)
@@ -267,22 +267,24 @@ class ASTConverter:
     # ==================== Types ====================
     def _convert_Type(self, node: Node) -> Union[TypeNode, ArrayTypeNode, RecordTypeNode]:
         token_node = node.children[0]
-        
-        # Array Type
+
         if isinstance(token_node, Node) and "ArrayType" in str(token_node.value):
             return self.visit(token_node)
-        
-        # Record Type
+
         if isinstance(token_node, Node) and "RecordType" in str(token_node.value):
             return self.visit(token_node)
             
         return TypeNode(type_name=self._get_lexeme(node))
 
     def _convert_ArrayType(self, node: Node) -> ArrayTypeNode:
-        """Handle: ARRAY [ <Expression> .. <Expression> ] OF <Type>"""
-        lower = self.visit(node.children[2])  # First expression
-        upper = self.visit(node.children[4])  # Second expression
-        elem_type = self.visit(node.children[7])  # Type after OF
+        """Handle: larik [ <Range> ] dari <Type>"""
+        # 1. Ambil Node Range (Index 2)
+        range_node = node.children[2]
+        
+        lower = self.visit(range_node.children[0])
+        upper = self.visit(range_node.children[2])
+        elem_type = self.visit(node.children[5])
+        
         return ArrayTypeNode(lower=lower, upper=upper, element_type=elem_type)
 
     def _convert_RecordType(self, node: Node) -> RecordTypeNode:
@@ -313,71 +315,149 @@ class ASTConverter:
             self._collect_fields(node.children[1], fields)
 
     # ==================== Subprograms ====================
+    def _convert_SubprogDeclList(self, node: Node) -> List[ASTNode]:
+        """Handle: <SubprogramDeclaration> ; <SubprogDeclList>"""
+        if not node.children or str(node.children[0].value) == "EPSILON":
+            return []
+        
+        subs = []
+        # Child 0: SubprogramDeclaration (Procedure/Function)
+        sub_decl = self.visit(node.children[0])
+        if sub_decl:
+            subs.append(sub_decl)
+            
+        # Child 2: Recursive List (setelah titik koma)
+        # Struktur: Decl(0) ; (1) List(2)
+        if len(node.children) > 2:
+            rest = self._convert_SubprogDeclList(node.children[2])
+            subs.extend(rest)
+            
+        return subs
+
+    def _convert_SubprogramDeclaration(self, node: Node):
+        # <SubprogramDeclaration> -> <ProcedureDeclaration> | <FunctionDeclaration>
+        return self.visit(node.children[0])
+
+   # ==================== Subprograms ====================
     def _convert_ProcedureDeclaration(self, node: Node) -> ProcedureDeclNode:
         """Handle: PROCEDURE IDENTIFIER (<Params>) ; <Block> ;"""
         name = self._get_lexeme(node.children[1])
         params = []
-        
-        if len(node.children) > 3 and str(node.children[3].value) != "RPAREN":
-            params = self.visit(node.children[3])
+        declarations = []
+        body = CompoundNode(children=[])
 
-        block_idx = len(node.children) - 2
-        block = self.visit(node.children[block_idx])
+        for child in node.children:
+            val_str = str(child.value)
+            if "FormalParam" in val_str:
+                res = self.visit(child)
+                if res: params = res
+            elif "Block" in val_str:
+                decl_part = child.children[0]
+                stmt_part = child.children[1]
+                
+                declarations = self._convert_DeclarationPart(decl_part)
+                body = self.visit(stmt_part) # Visit StatementPart -> Compound
         
-        return ProcedureDeclNode(name=name, params=params, block=block)
+        return ProcedureDeclNode(name=name, params=params, declarations=declarations, body=body)
 
     def _convert_FunctionDeclaration(self, node: Node) -> FunctionDeclNode:
-        """Handle: FUNCTION IDENTIFIER (<Params>) : <Type> ; <Block> ;"""
+        """Handle: FUNGSI IDENTIFIER (<Params>) : <Type> ; <Block> ;"""
         name = self._get_lexeme(node.children[1])
         params = []
+        return_type = None
+        declarations = []
+        body = CompoundNode(children=[])
         
-        # Check if there are parameters
-        param_idx = 3
-        if len(node.children) > param_idx and str(node.children[param_idx].value) != "RPAREN":
-            params = self.visit(node.children[param_idx])
-        
-        # Return type
-        return_type_idx = len(node.children) - 4
-        return_type = self.visit(node.children[return_type_idx])
-        
-        # Block
-        block_idx = len(node.children) - 2
-        block = self.visit(node.children[block_idx])
-        
-        return FunctionDeclNode(name=name, return_type=return_type, params=params, block=block)
+        for child in node.children:
+            val_str = str(child.value)
+            
+            if "FormalParam" in val_str:
+                res = self.visit(child)
+                if res: params = res
+            elif "Type" in val_str and "Decl" not in val_str: 
+                return_type = self.visit(child)
+            elif "Block" in val_str:
+                decl_part = child.children[0]
+                stmt_part = child.children[1]
+                
+                declarations = self._convert_DeclarationPart(decl_part)
+                body = self.visit(stmt_part)
 
-    def _convert_FormalParameters(self, node: Node) -> List[ParameterNode]:
-        """Collect formal parameters"""
+        return FunctionDeclNode(
+            name=name, 
+            return_type=return_type, 
+            params=params, 
+            declarations=declarations, # Field baru
+            body=body                  # Field baru (pengganti block)
+        )
+
+    def _convert_FormalParamOpt(self, node: Node):
+        """Handle Optional Formal Parameters"""
+        if not node.children or str(node.children[0].value) == "EPSILON":
+            return []
+        # Visit anak pertama (FormalParameterList)
+        return self.visit(node.children[0])
+
+    def _convert_FormalParameterList(self, node: Node) -> List[ParameterNode]:
+        """Handle: ( <ParamSectionList> )"""
+        # Struktur: LPAREN(0) ParamSectionList(1) RPAREN(2)
+        if len(node.children) > 1:
+            return self.visit(node.children[1])
+        return []
+
+    def _convert_ParamSectionList(self, node: Node) -> List[ParameterNode]:
+        """Handle: <ParamSection> ; <ParamSectionList>"""
         params = []
-        self._collect_formal_params(node, params)
+
+        section = self.visit(node.children[0])
+        if section:
+            params.extend(section) # section mengembalikan List[ParameterNode]
+
+        if len(node.children) > 1:
+            self._collect_param_section_prime(node.children[1], params)
+            
         return params
 
-    def _collect_formal_params(self, node: Node, params: List[ParameterNode]):
-        """Recursively collect parameters"""
+    def _collect_param_section_prime(self, node: Node, params: List[ParameterNode]):
         if not node.children or str(node.children[0].value) == "EPSILON":
             return
-        
-        param = self.visit(node.children[0])
-        if param:
-            params.append(param)
-        
-        if len(node.children) > 1:
-            self._collect_formal_params(node.children[1], params)
 
-    def _convert_ParameterGroup(self, node: Node) -> ParameterNode:
+        if len(node.children) > 1:
+            section = self.visit(node.children[1])
+            if section: params.extend(section)
+        
+        if len(node.children) > 2:
+            self._collect_param_section_prime(node.children[2], params)
+
+    def _convert_ParamSection(self, node: Node) -> List[ParameterNode]:
         """Handle: VAR? <IdentifierList> : <Type>"""
         is_ref = False
-        start_idx = 0
-        
-        # Check for VAR keyword (pass by reference)
-        if self._get_lexeme(node.children[0]).lower() == "var":
+        first_child = node.children[0]
+        first_lex = ""
+
+        if isinstance(first_child, Node):
+            if first_child.children and str(first_child.children[0].value) != "EPSILON":
+                first_lex = self._get_lexeme(first_child.children[0])
+        # Jika Token langsung
+        else:
+            first_lex = self._get_lexeme(first_child)
+
+        if first_lex.lower() in ["var", "variabel"]:
             is_ref = True
-            start_idx = 1
         
-        names = self.visit(node.children[start_idx])
-        type_node = self.visit(node.children[start_idx + 2])
+        # 2. Cari IdentifierList dan Type secara dinamis
+        names = []
+        type_node = None
         
-        return ParameterNode(names=names, type_node=type_node, is_ref=is_ref)
+        for child in node.children:
+            val_str = str(child.value)
+            if "IdentifierList" in val_str:
+                names = self.visit(child)
+            elif "Type" in val_str and "List" not in val_str: # Hindari IdentifierListPrime
+                type_node = self.visit(child)
+        
+        # 3. Buat ParameterNode untuk setiap identifier
+        return [ParameterNode(names=[n], type_node=type_node, is_ref=is_ref) for n in names]
 
     # ==================== Statements ====================
     def _convert_CompoundStatement(self, node: Node) -> CompoundNode:

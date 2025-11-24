@@ -160,18 +160,18 @@ class ParameterNode(ASTNode):
 
 @dataclass
 class ProcedureDeclNode(ASTNode):
-    """Node untuk deklarasi prosedur"""
     name: str
     params: List[ParameterNode]
-    block: ASTNode
+    declarations: List[ASTNode] # Variabel lokal, dll
+    body: ASTNode               # CompoundStatement
 
 @dataclass
 class FunctionDeclNode(ASTNode):
-    """Node untuk deklarasi fungsi"""
     name: str
     return_type: TypeNode
     params: List[ParameterNode]
-    block: ASTNode
+    declarations: List[ASTNode] # Variabel lokal, dll
+    body: ASTNode               # CompoundStatement
 
 # -----------------------------------------------------------
 # Statements
