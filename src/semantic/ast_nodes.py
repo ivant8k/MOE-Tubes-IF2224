@@ -17,7 +17,6 @@ class ASTNode:
         attrs = []
         children_map = [] 
 
-        # FIX: Special handling for ProcedureCallNode arguments
         is_proc_call = self.__class__.__name__ == "ProcedureCallNode"
 
         for f in fields(self):
@@ -91,7 +90,6 @@ class ASTNode:
                 result += child._print_tree(child_prefix, is_last_child)
         return result
 
-# ... (REST OF THE FILE IS SAME AS BEFORE - Copy all Node classes below) ...
 @dataclass
 class ProgramNode(ASTNode):
     name: str
@@ -102,11 +100,6 @@ class ProgramNode(ASTNode):
 class VarDeclNode(ASTNode):
     var_name: str
     type_node: 'TypeNode'
-    # Override str agar ringkas: VarDecl(var_name: 'a', type_node: 'integer')
-    # We want type_node to print as 'integer', not TypeNode(...)
-    # But fields() iteration will handle it if we adjust.
-    # However, user wants VarDecl(name: 'a', type: 'integer')
-    # We can achieve this by having type_node.__repr__ return the string.
     pass 
 
 @dataclass
@@ -123,7 +116,6 @@ class TypeDeclNode(ASTNode):
 class TypeNode(ASTNode):
     type_name: str
     def __repr__(self): return f"'{self.type_name}'"
-    # Important: This makes it print 'integer' inside VarDecl attr list
     def __str__(self): return f"'{self.type_name}'" 
 
 @dataclass

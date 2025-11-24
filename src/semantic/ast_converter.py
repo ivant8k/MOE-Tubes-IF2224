@@ -136,7 +136,7 @@ class ASTConverter:
             vars_list.extend(self._convert_VarDeclList(node.children[2]))
         return vars_list
 
-    def _collect_var_prime(self, node, vars_list):
+    def _collect_var_prime(self, node:Node, vars_list):
         if not node.children or str(node.children[0].value) == "EPSILON": return
         vars_list.extend(self.visit(node.children[0]))
         if len(node.children) > 1: self._collect_var_prime(node.children[1], vars_list)
@@ -151,7 +151,7 @@ class ASTConverter:
         if len(node.children) > 1: self._collect_ids(node.children[1], ids)
         return ids
 
-    def _collect_ids(self, node, ids):
+    def _collect_ids(self, node:Node, ids):
         if not node.children or str(node.children[0].value) == "EPSILON": return
         ids.append(self._get_lexeme(node.children[1]))
         if len(node.children) > 2: self._collect_ids(node.children[2], ids)
@@ -180,7 +180,7 @@ class ASTConverter:
         self._collect_fields(node, fields)
         return fields
 
-    def _collect_fields(self, node, fields):
+    def _collect_fields(self, node:Node, fields):
         if not node.children or str(node.children[0].value) == "EPSILON": return
         f = self.visit(node.children[0])
         if f: fields.extend(f)
@@ -247,7 +247,7 @@ class ASTConverter:
             self._collect_param_section_prime(node.children[1], params)
         return params
 
-    def _collect_param_section_prime(self, node, params):
+    def _collect_param_section_prime(self, node:Node, params):
         if not node.children or str(node.children[0].value) == "EPSILON": return
         p = self.visit(node.children[1])
         if p: params.extend(p)
@@ -260,7 +260,6 @@ class ASTConverter:
         start_idx = 0
         
         # 1. Cek Keyword VAR/VARIABEL
-        # Anak ke-0 bisa berupa Node VarKeywordOpt atau Token langsung
         first_child = node.children[0]
         first_lex = self._get_lexeme(first_child).lower()
         
@@ -268,7 +267,7 @@ class ASTConverter:
         if isinstance(first_child, Node) and "VarKeywordOpt" in str(first_child.value):
             if first_child.children and str(first_child.children[0].value) != "EPSILON":
                 is_ref = True
-            # Jika ada VarKeywordOpt, IdentifierList biasanya geser ke index 1
+
             start_idx = 1
             
         # Jika struktur flat (langsung keyword 'variabel')
@@ -277,18 +276,14 @@ class ASTConverter:
             start_idx = 1
             
         # 2. Ambil Identifier List
-        # Pastikan kita mengambil node yang benar
         id_list_node = node.children[start_idx]
         names = self.visit(id_list_node)
         
-        # SAFETY CHECK: Jika names None, inisialisasi list kosong untuk mencegah crash
         if names is None:
             print(f"[WARN] Identifier list parsing failed for node: {id_list_node.value}")
             names = []
             
         # 3. Ambil Type
-        # Type ada setelah COLON.
-        # Struktur: [VarOpt, IdList, Colon, Type] -> index Type = start_idx + 2
         type_idx = start_idx + 2
         type_node = None
         
@@ -315,7 +310,7 @@ class ASTConverter:
         if len(node.children) > 1: self._collect_stmt_prime(node.children[1], stmts)
         return stmts
 
-    def _collect_stmt_prime(self, node, stmts):
+    def _collect_stmt_prime(self, node:Node, stmts):
         if not node.children or str(node.children[0].value) == "EPSILON": return
         s = self.visit(node.children[1]) 
         if s and not isinstance(s, NoOpNode): stmts.append(s)
@@ -327,15 +322,11 @@ class ASTConverter:
 
     def _convert_AssignmentStatement(self, node: Node) -> AssignNode:
         """Handle: IDENTIFIER <VariableTail>? := <Expression>"""
-        
-        # 1. Ambil Target Dasar
         target_name = self._get_lexeme(node.children[0])
         target = VarNode(name=target_name)
         
         expr = NoOpNode()
         
-        # 2. Deteksi Struktur berdasarkan Anak
-        # Cari posisi token ASSIGN (:=)
         assign_idx = -1
         for i, child in enumerate(node.children):
             # Cek lexeme token langsung atau bungkusannya
@@ -346,17 +337,8 @@ class ASTConverter:
         
         # Jika ketemu :=
         if assign_idx != -1:
-            # 3. Handle Bagian Kiri (Target)
-            # Jika ada node di antara ID (index 0) dan := (assign_idx)
-            # Itu adalah VariableTail (Array Index / Record Access)
             if assign_idx > 1:
-                # Ada tail, misalnya di index 1
-                # Kita asumsikan node.children[1] adalah VariableTail atau LBRACKET dkk
-                # Panggil _handle_variable_tail untuk membungkus target
                 target = self._handle_variable_tail(target, node.children[1])
-            
-            # 4. Handle Bagian Kanan (Expression)
-            # Expression ada setelah :=
             if len(node.children) > assign_idx + 1:
                 res = self.visit(node.children[assign_idx + 1])
                 if res is not None:
@@ -368,7 +350,7 @@ class ASTConverter:
 
         return AssignNode(target=target, value=expr)
 
-    # --- PARAMETER LIST FIX ---
+    # --- PARAMETER LIST ---
     def _convert_ParameterList(self, node: Node) -> List[ASTNode]:
         # <ParameterList> -> <Expression> , <ParameterList> | <Expression>
         # Parse Tree structure:
@@ -389,19 +371,14 @@ class ASTConverter:
         name = self._get_lexeme(node.children[0])
         params = []
         
-        # Cek jumlah anak untuk menentukan struktur
-        # Struktur 1: ID ( Params ) -> Minimal 3 anak (ID, Lparen, Rparen)
         if len(node.children) >= 3:
             child_2 = node.children[2]
-            # Cek apakah anak ke-2 bukan RPAREN (berarti ada parameter list)
             val_2 = str(child_2.value) if isinstance(child_2, Node) else str(child_2)
             if "RPAREN" not in val_2 and val_2 != ")":
                 res = self.visit(child_2)
                 if res: params = res
-                
-        # Struktur 2: ID <ParamOpt> -> 2 anak
+
         elif len(node.children) == 2:
-            # Visit anak kedua (ParamOpt atau sejenisnya)
             res = self.visit(node.children[1])
             if res: params = res
             
@@ -452,7 +429,7 @@ class ASTConverter:
         if len(node.children) > 1: return self._visit_expr_prime(node.children[1], left)
         return left
 
-    def _visit_expr_prime(self, node, left):
+    def _visit_expr_prime(self, node:Node, left):
         if not node.children or str(node.children[0].value) == "EPSILON": return left
         op = self._get_operator_lexeme(node.children[0])
         right = self.visit(node.children[1])
@@ -463,7 +440,7 @@ class ASTConverter:
         if len(node.children) > 1: return self._visit_simple_prime(node.children[1], left)
         return left
 
-    def _visit_simple_prime(self, node, left):
+    def _visit_simple_prime(self, node:Node, left):
         if not node.children or str(node.children[0].value) == "EPSILON": return left
         op = self._get_operator_lexeme(node.children[0])
         right = self.visit(node.children[1])
@@ -485,7 +462,7 @@ class ASTConverter:
         if len(node.children) > 1: return self._visit_term_prime(node.children[1], left)
         return left
 
-    def _visit_term_prime(self, node, left):
+    def _visit_term_prime(self, node:Node, left):
         if not node.children or str(node.children[0].value) == "EPSILON": return left
         op = self._get_operator_lexeme(node.children[0])
         right = self.visit(node.children[1])
@@ -530,7 +507,7 @@ class ASTConverter:
         if len(node.children) > 1: return self._handle_variable_tail(base, node.children[1])
         return base
 
-    def _handle_variable_tail(self, base, node):
+    def _handle_variable_tail(self, base, node:Node):
         if not node.children or str(node.children[0].value) == "EPSILON": return base
         first = self._get_lexeme(node.children[0])
         if first == "[":
