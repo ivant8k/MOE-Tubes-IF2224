@@ -756,42 +756,55 @@ class ASTConverter:
         return "?"
 
     def _convert_Factor(self, node: Node):
-        token = self._get_token(node)
-        if not token:
-            # Cek ( Expression )
-            if len(node.children) > 1:
-                 # Cek manual lexeme anak pertama untuk '('
-                 first_lex = self._get_lexeme(node.children[0])
-                 if first_lex == "(":
-                     return self.visit(node.children[1])
-            
-            # Cek Variable
-            if node.children and "Variable" in str(node.children[0].value):
-                return self._convert_Variable(node.children[0])
-                
-            return NoOpNode()
-
-        # 2. PROSES TOKEN (Angka, String, Var)
-        lexeme = token.lexeme
+        first = node.children[0]
+        val_str = str(first.value)
         
-        # Deteksi Angka (Handle int dan float)
-        clean_lex = lexeme.replace('.', '', 1).replace('-', '', 1)
-        if clean_lex.isdigit():
-            val = float(lexeme) if '.' in lexeme else int(lexeme)
-            return NumNode(value=val)
+        # 1. Variable (Diprioritaskan jika parser membungkusnya)
+        if val_str == "<Variable>":
+            return self._convert_Variable(first)
+
+        first_lex = self._get_lexeme(first)
+        if first_lex == "(":
+            # Expression ada di anak ke-1
+            return self.visit(node.children[1])
+
+        # 3. Token Analysis (NUMBER, STRING, BOOL, IDENTIFIER, TIDAK)
+        token = self._get_token(first)
+        if token:
+            lex = token.lexeme
+            TokenType = token.token_type
             
-        # Deteksi String
-        if (lexeme.startswith("'") and lexeme.endswith("'")) or \
-           (lexeme.startswith('"') and lexeme.endswith('"')):
-            return StringNode(value=lexeme[1:-1])
+            if TokenType == "NUMBER":
+                try: 
+                    val = float(lex) if '.' in lex else int(lex)
+                except: 
+                    val = 0
+                return NumNode(value=val)
             
-        # Deteksi Identifier / Variable sederhana
-        if lexeme[0].isalpha() or lexeme.startswith('_'):
-            return VarNode(name=lexeme)
-            
-        # Deteksi Operator Unary (NOT / tidak)
-        if lexeme.lower() == "tidak" or lexeme.lower() == "not":
-             if len(node.children) > 1:
-                 return UnaryOpNode(op=lexeme, expr=self.visit(node.children[1]))
-            
+            elif TokenType == "STRING_LITERAL":
+                return StringNode(value=lex)
+                
+            elif TokenType == "CHAR_LITERAL":
+                return CharNode(value=lex)
+                
+            elif TokenType == "KEYWORD" or TokenType == "BOOLEAN":
+                if lex.lower() == "true": return BoolNode(value=True)
+                if lex.lower() == "false": return BoolNode(value=False)
+
+            elif TokenType == "LOGICAL_OPERATOR" and lex.lower() == "tidak":
+                 return UnaryOpNode(op="tidak", expr=self.visit(node.children[1]))
+
+            elif TokenType == "IDENTIFIER":
+                 if len(node.children) > 1:
+                     sec = node.children[1]
+                     if self._get_lexeme(sec) == "(":
+                         params = []
+                         if len(node.children) > 2 and self._get_lexeme(node.children[2]) != ")":
+                             res = self.visit(node.children[2])
+                             if res: params = res
+                         return ProcedureCallNode(proc_name=lex, arguments=params)
+                 
+                 # Jika bukan func call, berarti Variable sederhana
+                 return VarNode(name=lex)
+
         return NoOpNode()
