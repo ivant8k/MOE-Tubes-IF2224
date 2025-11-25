@@ -97,11 +97,11 @@ class BTabEntry:
 class SymbolTable:
 
     def __init__(self):
-        self.tab: List[TabEntry] = []
-        self.atab: List[ATabEntry] = []
-        self.btab: List[BTabEntry] = []
+        self.tab: List[TabEntry] = [TabEntry(identifier="__DUMMY__")]  # index 0 dummy
+        self.atab: List[ATabEntry] = [ATabEntry()]  # index 0 dummy
+        self.btab: List[BTabEntry] = [BTabEntry()]  # index 0 dummy
 
-        self.display: List[int] = [0]  # Display untuk lexical levels
+        self.display: List[int] = [0] * 20 # Display untuk lexical levels
         self.current_level: int = 0  # Level lexical saat ini
 
         #counter
@@ -132,7 +132,13 @@ class SymbolTable:
         #     )
         #     self.tab.append(entry)
         #     self.tx += 1
-
+        # Reserved keywords
+        reserved_keywords = [
+            "PROGRAM", "KONSTAN", "TIPE", "VARIABEL", "PROSEDUR", "FUNGSI",
+            "MULAI", "SELESAI", "JIKA", "MAKA", "SELAIN-ITU", "UNTUK",
+            "DARI", "KE", "TURUN-KE", "LAKUKAN", "SELAMA", "ULANGI", "SAMPAI",
+            "DIV", "MOD", "DAN", "ATAU", "TIDAK"
+        ]
         # Mapping tipe dasar ke nilai enum TypeKind
         reserved_types = [
             ("INTEGER", TypeKind.INTEGER),
@@ -146,23 +152,33 @@ class SymbolTable:
             ("FALSE", TypeKind.BOOLEAN, 0),
         ]
 
+        # Isi dummy entries untuk reserved keywords (1-24)
+        for keyword in reserved_keywords:
+            self.tx += 1
+            self.tab.append(TabEntry(
+                identifier=keyword,
+                obj=ObjectKind.CONSTANT,  # Dummy
+                type=TypeKind.NOTYPE,
+                lev=0, adr=0
+            ))
+
         # Masukkan Tipe
         for name, kind in reserved_types:
-            self.enter(name, ObjectKind.TYPE, kind, 0, 1, 0, 0);
+            self.enter(name, ObjectKind.TYPE, kind, 0, 1, 0, 0)
 
         # Masukkan Konstanta
         for name, kind, value in reserved_consts:
-            self.enter(name, ObjectKind.CONSTANT, kind, 0, 1, 0, value);
+            self.enter(name, ObjectKind.CONSTANT, kind, 0, 1, 0, value)
 
     def _init_global_block(self):
-        """Membuat block global (program) di btab[0]"""
-        # Entry btab pertama buat global scope
-        self.btab.append(TabEntry(last=0, lpar=0, psze=0, vsze=0))
-        self.bx = 0
-        self.display.append(0)  # Level 0 di display
+        """Membuat block global (program) di btab[1]"""
+        self.bx += 1
+        self.btab.append(BTabEntry(last=0, lpar=0, psze=0, vsze=0))
 
-        # Update 'last' di btab[0] bair nunjuk ke last identifier, yaitu reserved words (asumsi di level 0)
-        self.btab[0].last = self.tx
+        self.display[0] = 1
+        
+        # Update last di global block agar menunjuk ke reserved words terakhir
+        self.btab[1].last = self.tx
 
     def enter(self, name:str, obj:ObjectKind, type_kind:TypeKind, ref:int, nrm:int, lev:int, adr:int) -> int:
         """
@@ -178,6 +194,7 @@ class SymbolTable:
             lev (int): Lexical level
             adr (int): Address/offset
         """
+        self.tx += 1
         # bikin object TabEntry
         new_entry = TabEntry(
             identifier=name,
@@ -190,21 +207,19 @@ class SymbolTable:
             adr=adr
         )
         self.tab.append(new_entry)
-        self.tx += 1
         current_idx = self.tx
 
         # Update link
-        if len(self.display) > 0:
-            # Ambil index btab untuk level saat ini
-            btab_idx = self.display[lev] if lev < len(self.display) else self.display[-1]
-
-            # Link entry baru yang nunjuk ke variable terakhir di scope ini
-            self.tab[current_idx].link = self.btab[btab_idx].last
-
-            # Update last pointer di btab biar nunjuk ke entry baru
-            self.btab[btab_idx].last =current_idx
-
-        return current_idx  # Kembalikan index entry baru
+        if lev < len(self.display):
+            btab_idx = self.display[lev]
+            
+            # Link entry LAMA ke entry BARU (maju)
+            last_idx = self.btab[btab_idx].last
+            if last_idx > 0:
+                self.tab[last_idx].link = current_idx
+            
+            # Update last pointer
+            self.btab[btab_idx].last = current_idx
     
     def add_variable(self, name:str, type_kind: TypeKind, ref: int = 0):
         """
@@ -221,27 +236,39 @@ class SymbolTable:
         
         current_btab_idx = self.display[self.current_level]
 
+        # Pastikan btab_idx valid
+        if current_btab_idx >= len(self.btab):
+            print(f"[DEBUG] Invalid btab index: {current_btab_idx}, len={len(self.btab)}")
+            raise ValueError(f"Invalid block table index: {current_btab_idx}")
+    
         size = 1
         if type_kind == TypeKind.ARRAY:
             size = self.atab[ref-1].size # ref-1 karena ref biasanya 1-based index
 
-        current_disp = self.btab[current_btab_idx].vsze
-        self.enter(
+        current_adr = self.btab[current_btab_idx].vsze
+        idx = self.enter(
             name=name,
             obj=ObjectKind.VARIABLE,
             type_kind=type_kind,
             ref=ref,
             nrm=1,
             lev=self.current_level,
-            adr=current_disp
+            adr=current_adr
         )
 
         # Update ukuran variabel lokal di block ini
         self.btab[current_btab_idx].vsze += size
+        return idx
 
     def add_constant(self, name: str, type_kind: TypeKind, value: Any):
         """Deklarasi Konstanta"""
-        self.enter(
+        # Cek duplikasi DI SCOPE LOKAL
+        existing_idx = self.lookup_local(name)
+        if existing_idx != 0:
+            print(f"[DEBUG] Constant '{name}' already exists at index {existing_idx}")
+            raise ValueError(f"Duplicate identifier '{name}' in the same scope.")
+    
+        idx = self.enter(
             name=name,
             obj=ObjectKind.CONSTANT,
             type_kind=type_kind,
@@ -250,7 +277,8 @@ class SymbolTable:
             lev=self.current_level,
             adr=value  # Simpan nilai konstanta di adr
         )
-
+        return idx
+    
     def enter_scope(self, scope_name: str):
         """
         Masuk ke scope baru (Procedure/Function).
@@ -259,14 +287,14 @@ class SymbolTable:
         self.current_level += 1
 
         # Buat entry block baru
-        self.btab.append(BTabEntry(last=0, lpar=0, psze=0, vsze=0))
         self.bx += 1
+        self.btab.append(BTabEntry(last=0, lpar=0, psze=0, vsze=0))
 
         # Update display
-        if len(self.display) <= self.current_level:
-            self.display.append(self.bx)
-        else:
-            self.display[self.current_level] = self.bx
+        if self.current_level >= len(self.display):
+            self.display.extend([0] * (self.current_level - len(self.display) + 1))
+    
+        self.display[self.current_level] = self.bx
 
     def exit_scope(self):
         """
@@ -303,10 +331,14 @@ class SymbolTable:
         Lookup biasa akan memprotes kalo x global sudah ada -> padahal kita mau deklarasi x lokal
         """
         btab_idx = self.display[self.current_level]
+        if btab_idx >= len(self.btab):
+            return 0
+    
         curr = self.btab[btab_idx].last
-        while curr > 0:
+        while curr > 0 and curr < len(self.tab):
             entry = self.tab[curr]
-            if entry.identifier == name:
+            # IMPORTANT: Case-sensitive comparison
+            if entry.identifier == name:  # Jangan pakai .upper()
                 return curr
             curr = entry.link
         return 0

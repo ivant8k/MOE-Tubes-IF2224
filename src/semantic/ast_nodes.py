@@ -11,84 +11,82 @@ class ASTNode:
         return self._print_tree()
 
     def _print_tree(self, prefix="", is_last=True):
-        node_name = self.__class__.__name__.replace("Node", "")
-        if node_name == "Program": node_name = "ProgramNode"
-        
-        attrs = []
-        children_map = [] 
+        # Nama node
+        node_name = self.__class__.__name__
+        if node_name.endswith("Node"):
+            node_name = node_name[:-4]
 
-        is_proc_call = self.__class__.__name__ == "ProcedureCallNode"
+        # Ambil atribut tampilan
+        attrs = []
+        if getattr(self, "type", None):
+            attrs.append(f"type:{self.type}")
+
+        if getattr(self, "symbol_entry", None):
+            se = self.symbol_entry
+            extras = []
+            if isinstance(se, dict):
+                if "tab_index" in se: extras.append(f"tab_index:{se['tab_index']}")
+                if "lev" in se:       extras.append(f"lev:{se['lev']}")
+            if extras:
+                attrs.append(", ".join(extras))
+
+        # Buat row output node saat ini
+        connector = "└─ " if is_last else "├─ "
+        line_prefix = "" if prefix == "" else prefix + connector
+
+        # Format atribut ( → )
+        attr_str = ""
+        if attrs:
+            attr_str = "  →  " + ", ".join(attrs)
+
+        result = f"{line_prefix}{node_name}{attr_str}\n"
+
+        # Padding untuk anak node berikutnya
+        child_prefix = prefix + ("   " if is_last else "│  ")
+
+        # Kumpulkan child AST
+        children = []
 
         for f in fields(self):
-            if f.name in ['type', 'symbol_entry']: continue
-            
-            val = getattr(self, f.name)
-            
-            if self.__class__.__name__ == "ProgramNode":
-                if f.name in ["declarations", "block"]:
-                    if f.name == "declarations": children_map.append(("Declarations", val)) 
-                    else: children_map.append(("Block", val)) 
-                    continue
-
-            # IF ProcedureCall, format args inline!
-            if is_proc_call and f.name == "arguments":
-                if isinstance(val, list):
-                    # Create a string representation like [String('...'), Var('b')]
-                    args_str = ", ".join([str(arg).split('(')[0] + "(" + str(arg).split('(')[1].strip()[:-1] + ")" for arg in val if hasattr(arg, '__class__')])
-                    # Simplified inline repr for readability
-                    nice_args = []
-                    for arg in val:
-                        if isinstance(arg, StringNode): nice_args.append(f"String('{arg.value}')")
-                        elif isinstance(arg, VarNode): nice_args.append(f"Var('{arg.name}')")
-                        elif isinstance(arg, NumNode): nice_args.append(f"Num({arg.value})")
-                        else: nice_args.append(arg.__class__.__name__.replace("Node",""))
-                    
-                    attrs.append(f"args: [{', '.join(nice_args)}]")
+            if f.name in ["type", "symbol_entry"]:
                 continue
 
+            val = getattr(self, f.name)
+
+            # child single node
             if isinstance(val, ASTNode):
-                children_map.append((None, val))
+                children.append((f.name, val))
+
+            # list child
             elif isinstance(val, list):
                 for item in val:
                     if isinstance(item, ASTNode):
-                        children_map.append((None, item))
+                        children.append((f.name, item))
+
+            # field value biasa
             elif val is not None:
-                val_str = f"'{val}'" if isinstance(val, str) else str(val)
-                attrs.append(f"{f.name}: {val_str}")
+                # tampilkan di parent sebagai inline
+                if isinstance(val, str):
+                    result = result.rstrip() + f"(name: '{val}')\n"
+                else:
+                    result = result.rstrip() + f"({f.name}: {val})\n"
 
-        attr_str = f"({', '.join(attrs)})" if attrs else ""
-        connector = "\\-- " if is_last else "+-- "
-        
-        if prefix == "": 
-            result = f"{node_name}{attr_str}\n"
-            child_prefix = "    "
-        else:
-            result = f"{prefix}{connector}{node_name}{attr_str}\n"
-            child_prefix = prefix + ("    " if is_last else "|   ")
+        # Cetak child
+        for i, (label, child) in enumerate(children):
+            is_last_child = (i == len(children) - 1)
 
-        count = len(children_map)
-        for i, (label, child) in enumerate(children_map):
-            is_last_child = (i == count - 1)
-            
-            if label: 
-                sub_connector = "\\-- " if is_last_child else "+-- "
-                result += f"{child_prefix}{sub_connector}{label}\n"
-                virtual_prefix = child_prefix + ("    " if is_last_child else "|   ")
-                
-                if label == "Block" and type(child).__name__ == "CompoundNode":
-                    statements = getattr(child, 'children', [])
-                    for k, stmt in enumerate(statements):
-                        is_last_stmt = (k == len(statements) - 1)
-                        result += stmt._print_tree(virtual_prefix, is_last_stmt)
-                elif isinstance(child, list):
-                    for j, item in enumerate(child):
-                        is_last_item = (j == len(child) - 1)
-                        result += item._print_tree(virtual_prefix, is_last_item)
-                elif isinstance(child, ASTNode):
-                    result += child._print_tree(virtual_prefix, True)
-            else:
-                result += child._print_tree(child_prefix, is_last_child)
+            # Nama field seperti target / value
+            next_prefix = child_prefix
+
+            child_label = None
+            if child.__class__.__name__ in ["Var", "Num", "String", "BinOp"]:
+                child_label = f"{label} "
+
+            # Rekursi
+            result += child._print_tree(next_prefix, is_last_child)
+
         return result
+
 
 @dataclass
 class ProgramNode(ASTNode):

@@ -3,7 +3,7 @@ import sys, os
 from lexical.lexer import Lexer, LexicalError
 from syntax.syntax import SyntaxAnalyzer, SyntaxError
 from semantic.ast_converter import ASTConverter
-# from semantic.semantic_analyzer import SemanticAnalyzer
+from semantic.analyzer import SemanticAnalyzer
 
 def main():
     """
@@ -64,39 +64,58 @@ def main():
     try:
         converter = ASTConverter()
         ast = converter.convert(parser_tree)
-        print("\n=== Abstract Syntax Tree (AST) ===")
-        print(ast)
+        # print("\n=== Abstract Syntax Tree (AST) ===")
+        # print(ast)
     except Exception as e:
         print(f"AST Error: {e}")
         import traceback
         traceback.print_exc()
         return
     
-    # --- 5. Jalankan Semantic Analyzer ---
-    # try:
-    #     analyzer = SemanticAnalyzer()
-    #     analyzer.visit(ast)
+    # --- 5. Phase 4: Semantic Analysis ---
+    print("[4/4] Running Semantic Analysis...")
+    try:
+        analyzer = SemanticAnalyzer()
+        analyzer.visit(ast)
         
-    #     print("\n=== Compilation Successful ===")
-    #     print("\nSymbol Table (Tab):")
-    #     # Skip dummy index 0
-    #     for idx, entry in enumerate(analyzer.symbol_table.tab):
-    #         if idx == 0: continue
-    #         print(f"{idx}: {entry}")
+        print("      Success! No semantic errors found.")
+        print("\n" + "="*50)
+        print("COMPILATION SUCCESSFUL")
+        print("="*50)
         
-    #     print("\nBlock Table (BTab):")
-    #     for idx, entry in enumerate(analyzer.symbol_table.btab):
-    #         print(f"{idx}: {entry}")
+        # Cetak Symbol Table (Tab) - Skip dummy index 0
+        print("\n>> Symbol Table (Identifier Table):")
+        print(f"{'Idx':<5} | {'id':<15} | {'Obj':<10} | {'Type':<10} | {'nrm':<5} | {'Lev':<5} | {'Adr':<5} | {'link':<5}")
+        print("-" * 55)
+        for idx, entry in enumerate(analyzer.symbol_table.tab):
+            if idx == 0: continue # Skip dummy
+            name = entry.identifier
+            obj = entry.obj.value if hasattr(entry.obj, 'value') else str(entry.obj)
+            typ = entry.type.name if hasattr(entry.type, 'name') else str(entry.type)
+            print(f"{idx:<5} | {name:<15} | {obj:<10} | {typ:<10} | {entry.nrm:<5} | {entry.lev:<5} | {entry.adr:<5} | {entry.link:<5}")
 
-    #     # Opsional: Print Array Table jika ada
-    #     if analyzer.symbol_table.atab:
-    #         print("\nArray Table (ATab):")
-    #         for idx, entry in enumerate(analyzer.symbol_table.atab):
-    #             print(f"{idx}: {entry}")
+        # Cetak Block Table (BTab)
+        print("\n>> Block Table (Scope Info):")
+        for idx, entry in enumerate(analyzer.symbol_table.btab):
+            if idx == 0: continue # Skip dummy global wrapper if needed
+            print(f"{idx} | {entry.last} | {entry.lpar} | {entry.psze} | {entry.vsze} |")
+
+        print("\n>> Array Table:" )
+        if len(analyzer.symbol_table.atab) == 0:
+            print("  (empty)")
+
+        for idx, entry in enumerate(analyzer.symbol_table.atab):
+            print(f"Array {idx}: {entry}")
+
+        print("\n=== Final Abstract Syntax Tree (AST) with Semantic Info ===")
+
+        print(ast)
             
-    # except Exception as e:
-    #     print(f"Semantic Error: {e}")
-    #     traceback.print_exc()
+    except Exception as e:
+        import traceback
+        print(f"      [Semantic Error] {e}")
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

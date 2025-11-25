@@ -80,8 +80,10 @@ class ASTConverter:
         for child in node.children:
             if isinstance(child, Node) and str(child.value) == "EPSILON": continue
             res = self.visit(child)
-            if isinstance(res, list): decls.extend(res)
-            elif res and not isinstance(res, NoOpNode): decls.append(res)
+            if isinstance(res, list): 
+                decls.extend(res)
+            elif res and not isinstance(res, NoOpNode): 
+                decls.append(res)
         return decls
 
     # ==================== DECLARATIONS ====================
@@ -144,7 +146,9 @@ class ASTConverter:
     def _convert_VarDeclaration(self, node: Node) -> List[VarDeclNode]:
         ids = self.visit(node.children[0]) 
         type_node = self.visit(node.children[2]) 
-        return [VarDeclNode(var_name=name, type_node=type_node) for name in ids]
+        result = [VarDeclNode(var_name=name, type_node=type_node) for name in ids]
+        print(f"[DEBUG Converter] Creating VarDecl: {[r.var_name for r in result]}")
+        return result
 
     def _convert_IdentifierList(self, node: Node) -> List[str]:
         ids = [self._get_lexeme(node.children[0])]

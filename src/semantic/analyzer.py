@@ -56,8 +56,21 @@ class SemanticAnalyzer:
 
         # 2. Masukkan ke Symbol Table
         try:
-            # add_variable otomatis mengecek duplikasi di scope lokal
-            self.symbol_table.add_variable(node.var_name, type_kind)
+            # add_variable mengembalikan index
+            idx = self.symbol_table.add_variable(node.var_name, type_kind)
+            
+            if idx is None:
+                print(f"[Semantic Error] Failed to add variable '{node.var_name}'")
+                return
+
+            # Dekorasi AST Node
+            entry = self.symbol_table.get_entry(idx)
+            node.type = entry.type.name
+            node.symbol_entry = {
+                'tab_index': idx,
+                'lev': entry.lev
+            }
+            
         except ValueError as e:
             print(f"[Semantic Error] {e}")
 
@@ -71,7 +84,19 @@ class SemanticAnalyzer:
             raw_value = node.value.value
 
         try:
-            self.symbol_table.add_constant(node.const_name, value_type, raw_value)
+            idx = self.symbol_table.add_constant(node.const_name, value_type, raw_value)
+            
+            # ← TAMBAHKAN SAFETY CHECK
+            if idx is None:
+                print(f"[Semantic Error] Failed to add constant '{node.const_name}'")
+                return
+            
+            # Dekorasi node (opsional)
+            entry = self.symbol_table.get_entry(idx)
+            if entry:
+                node.type = entry.type.name
+                node.symbol_entry = {'tab_index': idx, 'lev': entry.lev}
+                
         except ValueError as e:
             print(f"[Semantic Error] {e}")
 
@@ -110,14 +135,11 @@ class SemanticAnalyzer:
         for param in node.params:
             self.visit_ParameterNode(param)
             
-        # 4. Proses Deklarasi Lokal
-        for decl in node.declarations:
-            self.visit(decl)
-            
-        # 5. Proses Body
-        self.visit(node.body)
+         # 4. Proses Block (yang sudah include deklarasi lokal & statements)
+        if node.block:
+            self.visit(node.block)
         
-        # 6. Keluar Scope
+        # 5. Keluar Scope
         self.symbol_table.exit_scope()
 
     def visit_FunctionDeclNode(self, node: FunctionDeclNode):
@@ -139,10 +161,9 @@ class SemanticAnalyzer:
         for param in node.params:
             self.visit_ParameterNode(param)
             
-        # 4. Deklarasi & Body
-        for decl in node.declarations:
-            self.visit(decl)
-        self.visit(node.body)
+        # 4. Proses Block (yang sudah include deklarasi & body)
+        if node.block:
+            self.visit(node.block)
         
         # 5. Keluar Scope
         self.symbol_table.exit_scope()
