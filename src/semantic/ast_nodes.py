@@ -386,6 +386,7 @@ class ParameterNode(ASTNode):
 class ProcedureDeclNode(ASTNode):
     name: str
     params: List[ParameterNode]
+    local_vars: List[ASTNode]
     block: ASTNode
 
 @dataclass
@@ -393,4 +394,5 @@ class FunctionDeclNode(ASTNode):
     name: str
     return_type: TypeNode
     params: List[ParameterNode]
+    local_vars: List[ASTNode]
     block: ASTNode

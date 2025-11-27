@@ -204,6 +204,7 @@ class ASTConverter:
     def _convert_ProcedureDeclaration(self, node: Node) -> ProcedureDeclNode:
         name = self._get_lexeme(node.children[1])
         params = []
+        local_vars = []
         block = None
         for child in node.children:
             val = str(child.value)
@@ -214,11 +215,11 @@ class ASTConverter:
                 # Unpack Block
                 decl_part = child.children[0]
                 stmt_part = child.children[1]
-                decls = self._convert_DeclarationPart(decl_part)
+                local_decls = self._convert_DeclarationPart(decl_part)
                 body = self.visit(stmt_part)
                 block = CompoundNode(children=body.children) # Simplified for now
                 # Idealnya simpan decls di ProcDeclNode
-        return ProcedureDeclNode(name=name, params=params, block=block)
+        return ProcedureDeclNode(name=name, params=params, local_vars= local_decls, block=block)
 
     def _convert_FunctionDeclaration(self, node: Node) -> FunctionDeclNode:
         name = self._get_lexeme(node.children[1])
@@ -233,8 +234,14 @@ class ASTConverter:
             elif "Type" in val and "Decl" not in val:
                 return_type = self.visit(child)
             elif "Block" in val:
+                decl_part = child.children[0]
+                stmt_part = child.children[1]
+
+                local_decls = self._convert_DeclarationPart(decl_part)
+                body = self.visit(stmt_part)
+
                 block = self.visit(child.children[1])
-        return FunctionDeclNode(name=name, return_type=return_type, params=params, block=block)
+        return FunctionDeclNode(name=name, return_type=return_type, params=params, local_vars = local_decls, block=block)
 
     def _convert_FormalParamOpt(self, node: Node):
         if not node.children or str(node.children[0].value) == "EPSILON": return []

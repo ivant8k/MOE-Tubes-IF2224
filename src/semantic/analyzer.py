@@ -43,36 +43,107 @@ class SemanticAnalyzer:
     # =========================================================================
     # DECLARATIONS
     # =========================================================================
-
+    
     def visit_VarDeclNode(self, node: VarDeclNode):
-        # 1. Resolve Tipe Data dari String ke Enum
-        type_name = node.type_node.type_name
-        type_kind = self._resolve_type_str(type_name)
-        
-        if type_kind == TypeKind.NOTYPE:
-            # Cek apakah ini tipe bentukan user (Array/Record)
-            # TODO: Implementasi lookup tipe kustom di sini
-            pass
+        # Cek apakah tipe-nya adalah ArrayTypeNode (definisi array langsung)
+        if isinstance(node.type_node, ArrayTypeNode):
+            # Resolve struktur array dan dapatkan referensi ke atab
+            type_kind, ref_idx = self._resolve_array_type(node.type_node)
+        else:
+            # Tipe primitive atau named type
+            type_name = node.type_node.type_name if hasattr(node.type_node, 'type_name') else str(node.type_node)
+            type_kind = self._resolve_type_str(type_name)
+            ref_idx = 0 
+            # Note: Jika named type merujuk ke array (TYPE A = ARRAY...), 
+            # ref_idx harus diambil dari lookup identifier tipe tersebut.
+            if type_kind == TypeKind.NOTYPE:
+                # Coba lookup apakah ini Tipe Bentukan (Named Type)
+                type_entry_idx = self.symbol_table.lookup(type_name)
+                if type_entry_idx != 0:
+                    entry = self.symbol_table.get_entry(type_entry_idx)
+                    if entry.obj == ObjectKind.TYPE:
+                        type_kind = entry.type
+                        ref_idx = entry.ref
 
-        # 2. Masukkan ke Symbol Table
         try:
-            # add_variable mengembalikan index
-            idx = self.symbol_table.add_variable(node.var_name, type_kind)
+            # add_variable sekarang menerima ref (penting untuk array)
+            idx = self.symbol_table.add_variable(node.var_name, type_kind, ref=ref_idx)
             
             if idx is None:
                 print(f"[Semantic Error] Failed to add variable '{node.var_name}'")
                 return
 
-            # Dekorasi AST Node
             entry = self.symbol_table.get_entry(idx)
             node.type = entry.type.name
-            node.symbol_entry = {
-                'tab_index': idx,
-                'lev': entry.lev
-            }
+            node.symbol_entry = {'tab_index': idx, 'lev': entry.lev}
             
         except ValueError as e:
             print(f"[Semantic Error] {e}")
+
+    def _resolve_array_type(self, node: ArrayTypeNode):
+        """
+        Memproses ArrayTypeNode, mendaftarkan ke atab, dan mengembalikan (TypeKind.ARRAY, ref_index)
+        """
+        # 1. Evaluate Bounds (Low & High)
+        # Asumsi bounds harus constant expression
+        low_val = self._get_constant_value(node.lower)
+        high_val = self._get_constant_value(node.upper)
+        
+        if low_val is None or high_val is None:
+            print("[Semantic Error] Array bounds must be constant integers.")
+            return TypeKind.NOTYPE, 0
+
+        if low_val > high_val:
+            print(f"[Semantic Error] Array lower bound ({low_val}) > upper bound ({high_val})")
+
+        # 2. Resolve Element Type
+        # Element bisa berupa simple type atau ArrayTypeNode lain (Multidimensional)
+        if isinstance(node.element_type, ArrayTypeNode):
+            etyp, eref = self._resolve_array_type(node.element_type)
+        else:
+            # Simple Type / Named Type
+            type_name = getattr(node.element_type, 'type_name', str(node.element_type))
+            etyp = self._resolve_type_str(type_name)
+            eref = 0
+            
+            # Handle Named Type untuk element
+            if etyp == TypeKind.NOTYPE:
+                 type_entry_idx = self.symbol_table.lookup(type_name)
+                 if type_entry_idx != 0:
+                    entry = self.symbol_table.get_entry(type_entry_idx)
+                    if entry.obj == ObjectKind.TYPE:
+                        etyp = entry.type
+                        eref = entry.ref
+
+        # 3. Register to ATAB
+        # Tipe index default INTEGER (bisa dikembangkan jika support char/enum index)
+        xtyp = TypeKind.INTEGER 
+        
+        atab_idx = self.symbol_table.add_array_type(xtyp, etyp, eref, low_val, high_val)
+        
+        return TypeKind.ARRAY, atab_idx
+
+    def _get_constant_value(self, node: ASTNode) -> Optional[int]:
+        """Helper untuk mengevaluasi nilai konstan statis dari AST Node"""
+        if isinstance(node, NumNode):
+            return int(node.value)
+        
+        if isinstance(node, UnaryOpNode):
+            val = self._get_constant_value(node.expr)
+            if val is not None:
+                if node.op == '-': return -val
+                if node.op == '+': return val
+        
+        if isinstance(node, VarNode):
+            # Lookup const identifier
+            idx = self.symbol_table.lookup(node.name)
+            if idx != 0:
+                entry = self.symbol_table.get_entry(idx)
+                if entry.obj == ObjectKind.CONSTANT:
+                    return int(entry.adr) # Nilai konstanta disimpan di adr
+        
+        # NOTE: Bisa dikembangkan untuk handle BinOp (misal: 10 + 5)
+        return None
 
     def visit_ConstDeclNode(self, node: ConstDeclNode):
         # 1. Evaluasi Tipe Nilai
@@ -103,16 +174,32 @@ class SemanticAnalyzer:
     def visit_TypeDeclNode(self, node: TypeDeclNode):
         # Untuk Milestone 3 dasar, kita catat namanya saja
         # Pengembangan lanjut: simpan struktur array/record di atab/btab
+        type_kind = TypeKind.NOTYPE
+        ref_idx = 0
+        
+        # 1. Cek apakah value-nya adalah Definisi Array
+        if isinstance(node.value, ArrayTypeNode):
+            # Reuse logic _resolve_array_type yang sudah ada
+            type_kind, ref_idx = self._resolve_array_type(node.value)
+            
+        # 2. Cek apakah value-nya adalah Tipe Lain (Alias, misal: TYPE Angka = Integer)
+        elif isinstance(node.value, TypeNode):
+            type_kind = self._resolve_type_str(node.value.type_name)
+            # Jika alias ke array yang sudah ada, perlu lookup ref-nya (opsional/advanced)
+            
         try:
+            # Masukkan ke Symbol Table sebagai ObjectKind.TYPE
             self.symbol_table.enter(
                 node.type_name, 
                 ObjectKind.TYPE, 
-                TypeKind.NOTYPE, # Atau TypeKind.ARRAY jika array
-                0, 1, self.symbol_table.current_level, 0
+                type_kind, 
+                ref_idx, # Simpan referensi ke atab
+                1, 
+                self.symbol_table.current_level, 
+                0
             )
         except Exception as e:
             print(f"[Semantic Error] {e}")
-
     # =========================================================================
     # SUBPROGRAMS (Procedure & Function)
     # =========================================================================
@@ -134,7 +221,13 @@ class SemanticAnalyzer:
         # 3. Proses Parameter
         for param in node.params:
             self.visit_ParameterNode(param)
-            
+
+        current_btab = self.symbol_table.btab[self.symbol_table.display[self.symbol_table.current_level]]
+        current_btab.lpar = self.symbol_table.tx
+
+        if hasattr(node, 'local_vars'):
+            for decl in node.local_vars:
+                self.visit(decl)
          # 4. Proses Block (yang sudah include deklarasi lokal & statements)
         if node.block:
             self.visit(node.block)
@@ -160,6 +253,10 @@ class SemanticAnalyzer:
         # 3. Parameter
         for param in node.params:
             self.visit_ParameterNode(param)
+
+        if hasattr(node, 'local_vars'):
+            for decl in node.local_vars:
+                self.visit(decl)
             
         # 4. Proses Block (yang sudah include deklarasi & body)
         if node.block:
@@ -199,7 +296,8 @@ class SemanticAnalyzer:
         
         # 2. Cek Tipe Value (Expression)
         value_type = self.visit(node.value)
-        
+        if target_type is None: target_type = TypeKind.NOTYPE
+        if value_type is None: value_type = TypeKind.NOTYPE        
         # 3. Validasi Kompatibilitas
         if target_type != value_type and target_type != TypeKind.NOTYPE and value_type != TypeKind.NOTYPE:
             # Implicit casting: Integer -> Real (OK)
@@ -246,19 +344,60 @@ class SemanticAnalyzer:
                 self.visit(arg)
             return
 
-        # Lookup Prosedur
+        # Lookup Prosedur/Fungsi
         idx = self.symbol_table.lookup(node.proc_name)
         if idx == 0:
-            print(f"[Semantic Error] Procedure '{node.proc_name}' not declared.")
-        else:
-            entry = self.symbol_table.get_entry(idx)
-            if entry.obj != ObjectKind.PROCEDURE:
-                 print(f"[Semantic Error] '{node.proc_name}' is not a procedure.")
-            # TODO: Cek jumlah parameter (entry.ref ke btab, lalu cek psze/count)
+            print(f"[Semantic Error] Identifier '{node.proc_name}' not declared.")
+            return TypeKind.NOTYPE
+        
+        entry = self.symbol_table.get_entry(idx)
+        
+        # Validasi: Harus Prosedur atau Fungsi
+        if entry.obj == ObjectKind.FUNCTION:
+            return entry.type
+        return TypeKind.NOTYPE
 
     # =========================================================================
     # EXPRESSIONS & FACTORS
     # =========================================================================
+    
+    def visit_ArrayAccessNode(self, node: ArrayAccessNode) -> TypeKind:
+        # 1. Periksa Variabel Array
+        # visit_VarNode akan mengembalikan tipe arraynya dan menempelkan symbol_entry
+        array_type = self.visit(node.array)
+        
+        if array_type != TypeKind.ARRAY:
+            print(f"[Semantic Error] Variable is not an array.")
+            return TypeKind.NOTYPE
+
+        # 2. Periksa Index
+        index_type = self.visit(node.index)
+        if index_type != TypeKind.INTEGER:
+            print(f"[Semantic Error] Array index must be INTEGER, got {index_type.name}")
+
+        # 3. Ambil Tipe Elemen dari Symbol Table (atab)
+        # Kita butuh ref dari node.array (yang sudah dipasang oleh visit_VarNode)
+        if not hasattr(node.array, 'symbol_entry'):
+            return TypeKind.NOTYPE
+
+        # Ambil referensi ke atab
+        tab_idx = node.array.symbol_entry.get('tab_index')
+        entry = self.symbol_table.get_entry(tab_idx)
+        
+        if entry and entry.ref > 0:
+            atab_entry = self.symbol_table.atab[entry.ref]
+            
+            # Validasi Range Index (Hanya bisa jika index berupa angka literal)
+            if isinstance(node.index, NumNode):
+                val = int(node.index.value)
+                if val < atab_entry.low or val > atab_entry.high:
+                    print(f"[Semantic Error] Array index out of bounds: {val}. Valid: [{atab_entry.low}..{atab_entry.high}]")
+
+            # Kembalikan tipe elemen (etyp)
+            return atab_entry.etyp
+            
+        return TypeKind.NOTYPE
+
 
     def visit_BinOpNode(self, node: BinOpNode) -> TypeKind:
         left = self.visit(node.left)
@@ -321,7 +460,15 @@ class SemanticAnalyzer:
         
         # 3. Dekorasi AST (Isi info tipe & entry ke Node)
         node.type = entry.type.name
-        node.symbol_entry = entry.__dict__ # Simpan dictionary entry
+        # Simpan tab_index beserta info entry lainnya
+        node.symbol_entry = {
+            'tab_index': idx,
+            'lev': entry.lev,
+            'adr': entry.adr,
+            'ref': entry.ref,
+            'obj': entry.obj,
+            'type': entry.type
+        }
         
         return entry.type
 
