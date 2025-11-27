@@ -198,7 +198,7 @@ class SymbolTable:
         # bikin object TabEntry
         new_entry = TabEntry(
             identifier=name,
-            link = 0, # nanti diupdate sama semantic analyzer
+            link=0, # nanti diupdate sama semantic analyzer
             obj=obj,
             type=type_kind,
             ref=ref,
@@ -220,6 +220,8 @@ class SymbolTable:
             
             # Update last pointer
             self.btab[btab_idx].last = current_idx
+            
+        return current_idx
     
     def add_variable(self, name:str, type_kind: TypeKind, ref: int = 0):
         """
