@@ -3,6 +3,7 @@ import sys, os
 from lexical.lexer import Lexer, LexicalError
 from syntax.syntax import SyntaxAnalyzer, SyntaxError
 from semantic.semantic import SemanticAnalyzer, SemanticError
+from semantic.print_tree import ASTPrinter
 
 def main():
     """
@@ -63,7 +64,7 @@ def main():
     # --- 4. Jalankan Semantic Analyzer (parse_tree -> AST -> [ASTDecorated, SymbolTable]) ---
     try:
         semantic_analyzer = SemanticAnalyzer()
-        decorated_ast, symbol_table = semantic_analyzer.analyze(parse_tree)
+        decorated_ast, symbol_table, ast = semantic_analyzer.analyze(parse_tree, debug=True)
         # Print Output
         print(symbol_table)
         print(decorated_ast)
