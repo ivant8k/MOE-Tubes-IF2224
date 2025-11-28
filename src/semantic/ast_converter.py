@@ -147,7 +147,7 @@ class ASTConverter:
         ids = self.visit(node.children[0]) 
         type_node = self.visit(node.children[2]) 
         result = [VarDeclNode(var_name=name, type_node=type_node) for name in ids]
-        print(f"[DEBUG Converter] Creating VarDecl: {[r.var_name for r in result]}")
+        # print(f"[DEBUG Converter] Creating VarDecl: {[r.var_name for r in result]}")
         return result
 
     def _convert_IdentifierList(self, node: Node) -> List[str]:

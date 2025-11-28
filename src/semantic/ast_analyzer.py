@@ -2,7 +2,18 @@ from typing import Optional
 from .ast_nodes import *
 from .symbol_table import SymbolTable, ObjectKind, TypeKind, TabEntry
 
-class SemanticAnalyzer:
+class ASTAnalyzerError(Exception):
+    """Custom exception untuk error dalam AST Analyzer."""
+    def __init__(self, message:str, line:int=None, column:int=None) -> None:
+        if line and column:
+            super().__init__(f"Semantic Error on line {line}, column {column}: {message}")
+        else:
+            super().__init__(f"{message}")
+        self.message = message
+        self.line = line
+        self.column = column
+
+class ASTAnalyzer:
     def __init__(self):
         self.symbol_table = SymbolTable()
 
@@ -70,15 +81,20 @@ class SemanticAnalyzer:
             idx = self.symbol_table.add_variable(node.var_name, type_kind, ref=ref_idx)
             
             if idx is None:
-                print(f"[Semantic Error] Failed to add variable '{node.var_name}'")
-                return
+                # print(f"[Semantic Error] Failed to add variable '{node.var_name}'")
+                # return
+                raise ASTAnalyzerError(message=f"Failed to add variable '{node.var_name}'")
 
             entry = self.symbol_table.get_entry(idx)
             node.type = entry.type.name
             node.symbol_entry = {'tab_index': idx, 'lev': entry.lev}
-            
+        
+        except ASTAnalyzerError as e:
+            raise ASTAnalyzerError(message=e)
+        
         except ValueError as e:
-            print(f"[Semantic Error] {e}")
+            # print(f"[Semantic Error] {e}")
+            raise ASTAnalyzerError(message=e)
 
     def _resolve_array_type(self, node: ArrayTypeNode):
         """
@@ -94,7 +110,8 @@ class SemanticAnalyzer:
             return TypeKind.NOTYPE, 0
 
         if low_val > high_val:
-            print(f"[Semantic Error] Array lower bound ({low_val}) > upper bound ({high_val})")
+            # print(f"[Semantic Error] Array lower bound ({low_val}) > upper bound ({high_val})")
+            raise ASTAnalyzerError(message=f"Array lower bound ({low_val}) > upper bound ({high_val})")
 
         # 2. Resolve Element Type
         # Element bisa berupa simple type atau ArrayTypeNode lain (Multidimensional)
@@ -159,8 +176,9 @@ class SemanticAnalyzer:
             
             # ← TAMBAHKAN SAFETY CHECK
             if idx is None:
-                print(f"[Semantic Error] Failed to add constant '{node.const_name}'")
-                return
+                # print(f"[Semantic Error] Failed to add constant '{node.const_name}'")
+                # return
+                raise ASTAnalyzerError(message=f"Failed to add constant '{node.const_name}'")
             
             # Dekorasi node (opsional)
             entry = self.symbol_table.get_entry(idx)
@@ -168,8 +186,12 @@ class SemanticAnalyzer:
                 node.type = entry.type.name
                 node.symbol_entry = {'tab_index': idx, 'lev': entry.lev}
                 
+        except ASTAnalyzerError as e:
+            raise ASTAnalyzerError(message=e)
+
         except ValueError as e:
-            print(f"[Semantic Error] {e}")
+            # print(f"[Semantic Error] {e}")
+            raise ASTAnalyzerError(message=e)
 
     def visit_TypeDeclNode(self, node: TypeDeclNode):
         # Untuk Milestone 3 dasar, kita catat namanya saja
@@ -198,8 +220,14 @@ class SemanticAnalyzer:
                 self.symbol_table.current_level, 
                 0
             )
+
+        except ASTAnalyzerError as e:
+            raise ASTAnalyzerError(message=e)
+        
         except Exception as e:
-            print(f"[Semantic Error] {e}")
+            # print(f"[Semantic Error] {e}")
+            raise ASTAnalyzerError(message=e)
+
     # =========================================================================
     # SUBPROGRAMS (Procedure & Function)
     # =========================================================================
@@ -279,8 +307,11 @@ class SemanticAnalyzer:
                     name, ObjectKind.VARIABLE, type_kind, 0, nrm_val, 
                     self.symbol_table.current_level, 0
                 )
+            except ASTAnalyzerError as e:
+                raise ASTAnalyzerError(message=e)
             except ValueError as e:
-                print(f"[Semantic Error] {e}")
+                # print(f"[Semantic Error] {e}")
+                raise ASTAnalyzerError(message=e)
 
     # =========================================================================
     # STATEMENTS
@@ -304,14 +335,16 @@ class SemanticAnalyzer:
             if target_type == TypeKind.REAL and value_type == TypeKind.INTEGER:
                 return
             
-            print(f"[Semantic Error] Type mismatch in assignment. "
-                  f"Cannot assign {value_type.name} to {target_type.name}")
+            # print(f"[Semantic Error] Type mismatch in assignment. "
+            #       f"Cannot assign {value_type.name} to {target_type.name}")
+            raise ASTAnalyzerError(message=f"Type mismatch in assignment. Cannot assign {value_type.name} to {target_type.name}")
 
     def visit_IfNode(self, node: IfNode):
         cond_type = self.visit(node.condition)
         if cond_type != TypeKind.BOOLEAN and cond_type != TypeKind.NOTYPE:
-            print(f"[Semantic Error] IF condition must be BOOLEAN, got {cond_type.name}")
-        
+            # print(f"[Semantic Error] IF condition must be BOOLEAN, got {cond_type.name}")
+            raise ASTAnalyzerError(message=f"IF condition must be BOOLEAN, got {cond_type.name}")
+
         self.visit(node.true_block)
         if node.else_block:
             self.visit(node.else_block)
@@ -319,22 +352,25 @@ class SemanticAnalyzer:
     def visit_WhileNode(self, node: WhileNode):
         cond_type = self.visit(node.condition)
         if cond_type != TypeKind.BOOLEAN and cond_type != TypeKind.NOTYPE:
-            print(f"[Semantic Error] WHILE condition must be BOOLEAN, got {cond_type.name}")
+            # print(f"[Semantic Error] WHILE condition must be BOOLEAN, got {cond_type.name}")
+            raise ASTAnalyzerError(message=f"WHILE condition must be BOOLEAN, got {cond_type.name}")
         self.visit(node.body)
 
     def visit_ForNode(self, node: ForNode):
         # Cek variabel loop
         var_idx = self.symbol_table.lookup(node.variable)
         if var_idx == 0:
-            print(f"[Semantic Error] Loop variable '{node.variable}' not declared.")
-        
+            # print(f"[Semantic Error] Loop variable '{node.variable}' not declared.")
+            raise ASTAnalyzerError(message=f"Loop variable '{node.variable}' not declared.")
+
         # Cek tipe expression start & end (harus integer)
         start_type = self.visit(node.start_expr)
         end_type = self.visit(node.end_expr)
         
         if start_type != TypeKind.INTEGER or end_type != TypeKind.INTEGER:
-            print("[Semantic Error] FOR loop limits must be INTEGER.")
-            
+            # print("[Semantic Error] FOR loop limits must be INTEGER.")
+            raise ASTAnalyzerError(message=f"FOR loop limits must be INTEGER.")
+
         self.visit(node.body)
 
     def visit_ProcedureCallNode(self, node: ProcedureCallNode):
@@ -347,8 +383,9 @@ class SemanticAnalyzer:
         # Lookup Prosedur/Fungsi
         idx = self.symbol_table.lookup(node.proc_name)
         if idx == 0:
-            print(f"[Semantic Error] Identifier '{node.proc_name}' not declared.")
-            return TypeKind.NOTYPE
+            # print(f"[Semantic Error] Identifier '{node.proc_name}' not declared.")
+            # return TypeKind.NOTYPE
+            raise ASTAnalyzerError(message=f"Identifier '{node.proc_name}' not declared.")
         
         entry = self.symbol_table.get_entry(idx)
         
@@ -367,13 +404,15 @@ class SemanticAnalyzer:
         array_type = self.visit(node.array)
         
         if array_type != TypeKind.ARRAY:
-            print(f"[Semantic Error] Variable is not an array.")
-            return TypeKind.NOTYPE
+            # print(f"[Semantic Error] Variable is not an array.")
+            # return TypeKind.NOTYPE
+            raise ASTAnalyzerError(message=f"Variable is not an array.")
 
         # 2. Periksa Index
         index_type = self.visit(node.index)
         if index_type != TypeKind.INTEGER:
-            print(f"[Semantic Error] Array index must be INTEGER, got {index_type.name}")
+            # print(f"[Semantic Error] Array index must be INTEGER, got {index_type.name}")
+            raise ASTAnalyzerError(message=f"Array index must be INTEGER, got {index_type.name}")
 
         # 3. Ambil Tipe Elemen dari Symbol Table (atab)
         # Kita butuh ref dari node.array (yang sudah dipasang oleh visit_VarNode)
@@ -391,7 +430,8 @@ class SemanticAnalyzer:
             if isinstance(node.index, NumNode):
                 val = int(node.index.value)
                 if val < atab_entry.low or val > atab_entry.high:
-                    print(f"[Semantic Error] Array index out of bounds: {val}. Valid: [{atab_entry.low}..{atab_entry.high}]")
+                    # print(f"[Semantic Error] Array index out of bounds: {val}. Valid: [{atab_entry.low}..{atab_entry.high}]")
+                    raise ASTAnalyzerError(message=f"Array index out of bounds: {val}. Valid: [{atab_entry.low}..{atab_entry.high}]")
 
             # Kembalikan tipe elemen (etyp)
             return atab_entry.etyp
@@ -418,8 +458,9 @@ class SemanticAnalyzer:
             # Real operan
             if left == TypeKind.REAL or right == TypeKind.REAL:
                 if op == 'div' or op == 'mod':
-                     print(f"[Semantic Error] Operator '{op}' only for INTEGER.")
-                     return TypeKind.NOTYPE
+                    #  print(f"[Semantic Error] Operator '{op}' only for INTEGER.")
+                    #  return TypeKind.NOTYPE
+                    raise ASTAnalyzerError(message=f"Operator '{op}' only for INTEGER.")
                 return TypeKind.REAL
                 
         # Relasional: =, <>, <, >, <=, >=
@@ -431,8 +472,9 @@ class SemanticAnalyzer:
             if left == TypeKind.BOOLEAN and right == TypeKind.BOOLEAN:
                 return TypeKind.BOOLEAN
             else:
-                print(f"[Semantic Error] Operator '{op}' requires BOOLEAN operands.")
-                
+                # print(f"[Semantic Error] Operator '{op}' requires BOOLEAN operands.")
+                raise ASTAnalyzerError(message=f"Operator '{op}' requires BOOLEAN operands.")
+
         return TypeKind.NOTYPE
 
     def visit_UnaryOpNode(self, node: UnaryOpNode) -> TypeKind:
@@ -444,16 +486,18 @@ class SemanticAnalyzer:
         elif op == '-':
             if expr_type in [TypeKind.INTEGER, TypeKind.REAL]: return expr_type
             
-        print(f"[Semantic Error] Invalid unary op '{op}' on {expr_type.name}")
-        return TypeKind.NOTYPE
+        # print(f"[Semantic Error] Invalid unary op '{op}' on {expr_type.name}")
+        raise ASTAnalyzerError(message=f"Invalid unary op '{op}' on {expr_type.name}")
+        # return TypeKind.NOTYPE
 
     def visit_VarNode(self, node: VarNode) -> TypeKind:
         # 1. Lookup Identifier
         idx = self.symbol_table.lookup(node.name)
         
         if idx == 0:
-            print(f"[Semantic Error] Variable '{node.name}' not declared.")
-            return TypeKind.NOTYPE
+            # print(f"[Semantic Error] Variable '{node.name}' not declared.")
+            # return TypeKind.NOTYPE
+            raise ASTAnalyzerError(message=f"Variable '{node.name}' not declared.")
             
         # 2. Ambil Entry
         entry = self.symbol_table.get_entry(idx)

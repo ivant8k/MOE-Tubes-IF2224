@@ -1,5 +1,5 @@
 from .ast_nodes import *
-from .analyzer import SemanticAnalyzer
+from .ast_analyzer import ASTAnalyzer
 from .symbol_table import SymbolTable, TypeKind, ObjectKind, TabEntry
 
 # =========================================================================
@@ -20,7 +20,7 @@ class PatchedSymbolTable(SymbolTable):
 # =========================================================================
 # 2. AST DECORATOR
 # =========================================================================
-class ASTDecorator(SemanticAnalyzer):
+class ASTDecorator(ASTAnalyzer):
     
     def __init__(self):
         super().__init__()

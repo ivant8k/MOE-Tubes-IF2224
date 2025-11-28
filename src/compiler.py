@@ -2,9 +2,8 @@ import sys, os
 
 from lexical.lexer import Lexer, LexicalError
 from syntax.syntax import SyntaxAnalyzer, SyntaxError
-from semantic.ast_converter import ASTConverter
-from semantic.analyzer import SemanticAnalyzer
-from semantic.ast_decorator import ASTDecorator
+from semantic.semantic import SemanticAnalyzer, SemanticError
+from semantic.print_tree import ASTPrinter
 
 def main():
     """
@@ -51,73 +50,33 @@ def main():
     # --- 4. Jalankan Parser ---
     parser = SyntaxAnalyzer()
     try:
-        parser_tree = parser.parse(tokens=tokens)
-        # print(parser_tree)
+        parse_tree = parser.parse(tokens=tokens)
+        # print(parse_tree)
     except SyntaxError as e:
-        print(e)
+        print(str(e), file=sys.stderr)
+        sys.exit(1) # Keluar jika ada error sintaks
     except Exception as e:
         print(f"\nFATAL PARSER ERROR: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         sys.exit(1)
 
-    # --- 4. Jalankan AST Converter ---
+    # --- 4. Jalankan Semantic Analyzer (parse_tree -> AST -> [ASTDecorated, SymbolTable]) ---
     try:
-        converter = ASTConverter()
-        ast = converter.convert(parser_tree)
-        # print("\n=== Abstract Syntax Tree (AST) ===")
-        # print(ast)
+        semantic_analyzer = SemanticAnalyzer()
+        decorated_ast, symbol_table, ast = semantic_analyzer.analyze(parse_tree, debug=True)
+        # Print Output
+        print(symbol_table)
+        print(decorated_ast)
+
+    except SemanticError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(1) # Keluar jika ada error semantik
     except Exception as e:
-        print(f"AST Error: {e}")
+        print(f"\nFATAL SEMANTIC ERROR: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         return
-    
-    # --- 5. Phase 4: Semantic Analysis ---
-    print("[4/4] Running Semantic Analysis...")
-    try:
-        analyzer = ASTDecorator()
-        decorated_ast = analyzer.generate_decorated_ast(ast)
-        
-        print("      Success! No semantic errors found.")
-        print("\n" + "="*50)
-        print("COMPILATION SUCCESSFUL")
-        print("="*50)
-        
-        # Cetak Symbol Table (Tab) - Skip dummy index 0
-        print("\n>> Symbol Table (Identifier Table):")
-        print(f"{'Idx':<5} | {'id':<15} | {'Obj':<10} | {'Type':<10} | {'nrm':<5} | {'Lev':<5} | {'Adr':<5} | {'link':<5}")
-        print("-" * 55)
-        for idx, entry in enumerate(analyzer.symbol_table.tab):
-            if idx == 0: continue # Skip dummy
-            name = entry.identifier
-            obj = entry.obj.value if hasattr(entry.obj, 'value') else str(entry.obj)
-            typ = entry.type.name if hasattr(entry.type, 'name') else str(entry.type)
-            print(f"{idx:<5} | {name:<15} | {obj:<10} | {typ:<10} | {entry.nrm:<5} | {entry.lev:<5} | {entry.adr:<5} | {entry.link:<5}")
-
-        # Cetak Block Table (BTab)
-        print("\n>> Block Table (Scope Info):")
-        for idx, entry in enumerate(analyzer.symbol_table.btab):
-            if idx == 0: continue # Skip dummy global wrapper if needed
-            print(f"{idx} | {entry.last} | {entry.lpar} | {entry.psze} | {entry.vsze} |")
-
-        print("\n>> Array Table:" )
-        if len(analyzer.symbol_table.atab) == 0:
-            print("  (empty)")
-
-        for idx, entry in enumerate(analyzer.symbol_table.atab):
-            print(f"Array {idx}: {entry}")
-
-        print("\n=== Final Abstract Syntax Tree (AST) with Semantic Info ===")
-
-        print(decorated_ast)
-            
-    except Exception as e:
-        import traceback
-        print(f"      [Semantic Error] {e}")
-        traceback.print_exc()
-        sys.exit(1)
-
 
 if __name__ == "__main__":
     main()
