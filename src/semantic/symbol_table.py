@@ -114,24 +114,6 @@ class SymbolTable:
 
     def _init_reserved_idn(self):
         """Inisialisasi reserved identifiers ke dalam symbol table"""
-        # reserved_idns = [
-        #     ("INTEGER", ObjectKind.TYPE, TypeKind.INTEGER),
-        #     ("BOOLEAN", ObjectKind.TYPE, TypeKind.BOOLEAN),
-        #     ("CHAR", ObjectKind.TYPE, TypeKind.CHAR),
-        #     ("REAL", ObjectKind.TYPE, TypeKind.REAL),
-        #     ("TRUE", ObjectKind.CONSTANT, TypeKind.BOOLEAN),
-        #     ("FALSE", ObjectKind.CONSTANT, TypeKind.BOOLEAN),
-        # ]
-        # for name, obj_kind, type_kind in reserved_idns:
-        #     entry = TabEntry(
-        #         identifier=name,
-        #         obj=obj_kind,
-        #         type=type_kind,
-        #         lev=0,
-        #         adr=0
-        #     )
-        #     self.tab.append(entry)
-        #     self.tx += 1
         # Reserved keywords
         reserved_keywords = [
             "PROGRAM", "KONSTAN", "TIPE", "VARIABEL", "PROSEDUR", "FUNGSI",
@@ -172,13 +154,13 @@ class SymbolTable:
 
     def _init_global_block(self):
         """Membuat block global (program) di btab[1]"""
-        self.bx += 1
-        self.btab.append(BTabEntry(last=0, lpar=0, psze=0, vsze=0))
+        # self.bx += 1
+        # self.btab.append(BTabEntry(last=0, lpar=0, psze=0, vsze=0))
 
-        self.display[0] = 1
+        self.display[0] = 0
         
         # Update last di global block agar menunjuk ke reserved words terakhir
-        self.btab[1].last = self.tx
+        self.btab[0].last = self.tx
 
     def enter(self, name:str, obj:ObjectKind, type_kind:TypeKind, ref:int, nrm:int, lev:int, adr:int) -> int:
         """
@@ -198,7 +180,7 @@ class SymbolTable:
         # bikin object TabEntry
         new_entry = TabEntry(
             identifier=name,
-            link=0, # nanti diupdate sama semantic analyzer
+            link = 0, # nanti diupdate sama semantic analyzer
             obj=obj,
             type=type_kind,
             ref=ref,
@@ -215,14 +197,48 @@ class SymbolTable:
             
             # Link entry LAMA ke entry BARU (maju)
             last_idx = self.btab[btab_idx].last
-            if last_idx > 0:
-                self.tab[last_idx].link = current_idx
+            new_entry.link = last_idx
             
             # Update last pointer
             self.btab[btab_idx].last = current_idx
-            
         return current_idx
-    
+
+    def add_array_type(self, xtyp: TypeKind, etyp: TypeKind, eref: int, low: int, high: int) -> int:
+        """
+        Mendaftarkan informasi array ke atab.
+        Returns: index array di atab
+        """
+        # 1. Hitung Element Size (elsz)
+        elsz = 1
+        if etyp == TypeKind.INTEGER or etyp == TypeKind.BOOLEAN or etyp == TypeKind.CHAR:
+            elsz = 1
+        elif etyp == TypeKind.REAL:
+            elsz = 1 # Asumsi 1 unit stack, sesuaikan jika real butuh lebih
+        elif etyp == TypeKind.ARRAY:
+            # Jika elemennya array, ambil size dari atab referensi (eref)
+            # eref is 1-based index to atab
+            if eref > 0 and eref < len(self.atab):
+                elsz = self.atab[eref].size
+        
+        # 2. Hitung Total Size
+        # Size = jumlah elemen * ukuran per elemen
+        count = high - low + 1
+        total_size = count * elsz
+
+        # 3. Masukkan ke atab
+        self.ax += 1
+        new_entry = ATabEntry(
+            xtyp=xtyp,
+            etyp=etyp,
+            eref=eref,
+            low=low,
+            high=high,
+            elsz=elsz,
+            size=total_size
+        )
+        self.atab.append(new_entry)
+        
+        return self.ax
     def add_variable(self, name:str, type_kind: TypeKind, ref: int = 0):
         """
         Menambah variabel ke scope saat ini.
@@ -240,12 +256,15 @@ class SymbolTable:
 
         # Pastikan btab_idx valid
         if current_btab_idx >= len(self.btab):
-            print(f"[DEBUG] Invalid btab index: {current_btab_idx}, len={len(self.btab)}")
+            # print(f"[DEBUG] Invalid btab index: {current_btab_idx}, len={len(self.btab)}")
             raise ValueError(f"Invalid block table index: {current_btab_idx}")
     
         size = 1
         if type_kind == TypeKind.ARRAY:
-            size = self.atab[ref-1].size # ref-1 karena ref biasanya 1-based index
+            if ref > 0 and ref < len(self.atab):
+                size = self.atab[ref].size
+            else:
+                size = 0
 
         current_adr = self.btab[current_btab_idx].vsze
         idx = self.enter(
