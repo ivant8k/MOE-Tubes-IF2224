@@ -6,8 +6,11 @@
   <br/><br/>
   <a href="https://git.io/typing-svg">
   <img src="https://readme-typing-svg.demolab.com?font=Baloo&size=48&duration=4600&pause=800&color=FFB6C1&center=true&vCenter=true&width=600&lines=Moe+Moe+Kyun~" alt="Typing SVG" />
-  <img src="./assets/kitachanmoemoekyun.gif" width="50%" height="50%"/>
 </div>
+
+<p align="center">
+  <img src="assets/kitachanmoemoekyun.gif" width="50%">
+</p>
 
 ## Identitas Kelompok
 * **Nama Kelompok:** MoeMoeKyun
