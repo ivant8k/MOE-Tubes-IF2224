@@ -5,6 +5,7 @@ from syntax.syntax import SyntaxAnalyzer, SyntaxError
 from semantic.ast_converter import ASTConverter
 from semantic.analyzer import SemanticAnalyzer
 from semantic.ast_decorator import ASTDecorator
+from semantic.print_tree import ASTPrinter
 
 def main():
     """
@@ -65,8 +66,9 @@ def main():
     try:
         converter = ASTConverter()
         ast = converter.convert(parser_tree)
-        # print("\n=== Abstract Syntax Tree (AST) ===")
-        # print(ast)
+        print("\n=== Abstract Syntax Tree (AST) ===")
+        printer = ASTPrinter()
+        print(printer.print(ast))
     except Exception as e:
         print(f"AST Error: {e}")
         import traceback
