@@ -261,6 +261,10 @@ class ASTNode:
             # Skip atribut internal/semantic
             if f.name in ['type', 'symbol_entry', 'children']: 
                 continue
+            if self.__class__.__name__ == "ParameterNode" and f.name == "names":
+                if self.names:
+                    details.append(f"'{self.names[0]}'")
+                continue
                 
             val = getattr(self, f.name)
             
@@ -311,51 +315,61 @@ class ASTNode:
         if not parts:
             return ""
             
-        return "  →  " + ", ".join(parts)
+        return ", ".join(parts)
 
     def _print_ast_decorated(self, prefix="", is_last=True):
         """
         Fungsi rekursif utama untuk mencetak AST yang sudah didekorasi.
         """
+        # --- KONFIGURASI LEBAR KOLOM ---
+        ALIGN_WIDTH = 40 
+        
         # 1. Siapkan komponen visual
         connector = "└─ " if is_last else "├─ "
         
-        # 2. Ambil Nama Node (Tanpa suffix 'Node' agar ringkas)
+        # 2. Ambil Nama Node
         node_name = self.__class__.__name__.replace("Node", "")
         
-        # 3. Ambil Detail Inline (Nilai variabel/angka)
+        # 3. Ambil Detail Inline
         inline = self._get_inline_details()
         
-        # 4. Ambil Anotasi (Hasil Semantic Analyzer)
+        # 4. Bangun Bagian Kiri (Tree Structure)
+        line_prefix = "" if prefix == "" else prefix + connector
+        left_part = f"{line_prefix}{node_name}{inline}"
+        
+        # 5. Ambil Anotasi (Kanan)
         annotations = self._get_annotations()
 
-        # 5. Bangun String untuk Node ini
-        line_prefix = "" if prefix == "" else prefix + connector
-        result = f"{line_prefix}{node_name}{inline}{annotations}\n"
+        # 6. Gabungkan dengan Alignment
+        if annotations:
+            # ljust akan menambahkan spasi di kanan sampai panjang string mencapai ALIGN_WIDTH
+            # Jika string lebih panjang dari ALIGN_WIDTH, panah akan terdorong otomatis (aman)
+            padded_left = left_part.ljust(ALIGN_WIDTH)
+            result = f"{padded_left}  →  {annotations}\n"
+        else:
+            # Jika tidak ada anotasi, tidak perlu panah
+            result = f"{left_part}\n"
 
-        # 6. Siapkan Children untuk Rekursi
+        # 7. Siapkan Children untuk Rekursi
         children = []
         for f in fields(self):
-            # Skip field internal (metadata)
             if f.name in ['type', 'symbol_entry']: continue
             
-            # Jika ini VarDeclNode, JANGAN masukkan type_node sebagai child
-            # karena infonya sudah ada di annotations sebelah kanan.
-            if self.__class__.__name__ == "VarDeclNode" and f.name == "type_node":
-                continue
+            # Skip logic khusus
+            if f.name == "type_node":
+                if self.__class__.__name__ in ["VarDeclNode", "ParameterNode"]:
+                    continue
             
             val = getattr(self, f.name)
             
-            # Jika single ASTNode
             if isinstance(val, ASTNode):
                 children.append(val)
-            # Jika List of ASTNode
             elif isinstance(val, list):
                 for item in val:
                     if isinstance(item, ASTNode):
                         children.append(item)
 
-        # 7. Rekursi ke setiap Child
+        # 8. Rekursi ke setiap Child
         child_prefix = prefix + ("   " if is_last else "│  ")
         count = len(children)
         

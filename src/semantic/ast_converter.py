@@ -362,6 +362,11 @@ class ASTConverter:
         return AssignNode(target=target, value=expr)
 
     # --- PARAMETER LIST ---
+    def _convert_ParameterListOpt(self, node: Node) -> List[ASTNode]:
+        if not node.children or str(node.children[0].value) == "EPSILON": return []
+        return self.visit(node.children[0])
+
+
     def _convert_ParameterList(self, node: Node) -> List[ASTNode]:
         # <ParameterList> -> <Expression> , <ParameterList> | <Expression>
         # Parse Tree structure:
@@ -370,34 +375,67 @@ class ASTConverter:
         
         params = [self.visit(node.children[0])] # First Expression
         
-        if len(node.children) > 2:
-            # Ada koma dan recursive list
-            rest = self.visit(node.children[2])
-            if rest: params.extend(rest)
+        # if len(node.children) > 2:
+        #     # Ada koma dan recursive list
+        #     rest = self.visit(node.children[2])
+        #     if rest: params.extend(rest)
             
-        return params
+        # return params
+        if len(node.children) >= 2:
+            return self.visit(node.children[1])
+        return []
 
     def _convert_ProcedureCall(self, node: Node) -> ProcedureCallNode:
         """Handle: IDENTIFIER (<ParameterList>?)"""
         name = self._get_lexeme(node.children[0])
         params = []
         
-        if len(node.children) >= 3:
-            child_2 = node.children[2]
-            val_2 = str(child_2.value) if isinstance(child_2, Node) else str(child_2)
-            if "RPAREN" not in val_2 and val_2 != ")":
-                res = self.visit(child_2)
-                if res: params = res
+        # if len(node.children) >= 3:
+        #     child_2 = node.children[2]
+        #     val_2 = str(child_2.value) if isinstance(child_2, Node) else str(child_2)
+        #     if "RPAREN" not in val_2 and val_2 != ")":
+        #         res = self.visit(child_2)
+        #         if res: params = res
 
-        elif len(node.children) == 2:
-            res = self.visit(node.children[1])
-            if res: params = res
+        # elif len(node.children) == 2:
+        #     res = self.visit(node.children[1])
+        #     if res: params = res
             
+        if len(node.children) > 1:
+            res = self.visit(node.children[1])
+            if res:
+                params = res
         return ProcedureCallNode(proc_name=name, arguments=params)
 
     def _convert_ExpressionList(self, node: Node) -> List[ASTNode]:
-        # Fallback if grammar uses ExpressionList
-        return self._convert_ParameterList(node)
+        """Handle: <Expression> <ExpressionListPrime>"""
+        exprs = []
+        
+        # children[0] = <Expression>
+        first_expr = self.visit(node.children[0])
+        if first_expr:
+            exprs.append(first_expr)
+        
+        # children[1] = <ExpressionListPrime>
+        if len(node.children) > 1:
+            self._collect_expression_list_prime(node.children[1], exprs)
+        
+        return exprs
+
+    def _collect_expression_list_prime(self, node: Node, exprs: List[ASTNode]):
+        """Handle: COMMA(,) <Expression> <ExpressionListPrime> | <Epsilon>"""
+        if not node.children or str(node.children[0].value) == "EPSILON":
+            return
+        
+        # children[0] = ','
+        # children[1] = <Expression>
+        # children[2] = <ExpressionListPrime>
+        expr = self.visit(node.children[1])
+        if expr:
+            exprs.append(expr)
+        
+        if len(node.children) > 2:
+            self._collect_expression_list_prime(node.children[2], exprs)
 
     def _convert_IfStatement(self, node: Node) -> IfNode:
         cond = self.visit(node.children[1])
