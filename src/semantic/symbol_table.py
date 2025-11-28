@@ -112,6 +112,35 @@ class SymbolTable:
         self._init_reserved_idn()
         self._init_global_block()
 
+    def __str__(self):
+        # Cetak Symbol Table (Tab) - Skip dummy index 0
+        string = []
+        string.append("\n>> Symbol Table (Identifier Table):")
+        string.append(f"{'Idx':<5} | {'id':<15} | {'Obj':<10} | {'Type':<10} | {'nrm':<5} | {'Lev':<5} | {'Adr':<5} | {'link':<5}")
+        string.append("-" * 55)
+        for idx, entry in enumerate(self.tab):
+            if idx == 0: continue # Skip dummy
+            name = entry.identifier
+            obj = entry.obj.value if hasattr(entry.obj, 'value') else str(entry.obj)
+            typ = entry.type.name if hasattr(entry.type, 'name') else str(entry.type)
+            string.append(f"{idx:<5} | {name:<15} | {obj:<10} | {typ:<10} | {entry.nrm:<5} | {entry.lev:<5} | {entry.adr:<5} | {entry.link:<5}")
+
+        # Cetak Block Table (BTab)
+        string.append("\n>> Block Table (Scope Info):")
+        for idx, entry in enumerate(self.btab):
+            if idx == 0: continue # Skip dummy global wrapper if needed
+            string.append(f"{idx} | {entry.last} | {entry.lpar} | {entry.psze} | {entry.vsze} |")
+        
+        # Cetak Array Table (ATab)
+        string.append("\n>> Array Table:" )
+        if len(self.atab) == 0:
+            string.append("  (empty)")
+
+        for idx, entry in enumerate(self.atab):
+            string.append(f"Array {idx}: {entry}")
+        
+        return "\n".join(string)
+
     def _init_reserved_idn(self):
         """Inisialisasi reserved identifiers ke dalam symbol table"""
         # Reserved keywords
