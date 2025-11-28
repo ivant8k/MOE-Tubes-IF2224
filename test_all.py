@@ -6,7 +6,7 @@ files = glob.glob('test/*/*.pas')
 
 # Iterate over each file and run the command
 for file in files:
-    command = ["python3", "src/driver_ast_decorated.py", file]
+    command = ["python3", "src/compiler.py", file]
     
     if 'milestone-1' in file:
         continue

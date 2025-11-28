@@ -4,6 +4,7 @@ from lexical.lexer import Lexer, LexicalError
 from syntax.syntax import SyntaxAnalyzer, SyntaxError
 from semantic.ast_converter import ASTConverter
 from semantic.analyzer import SemanticAnalyzer
+from semantic.ast_decorator import ASTDecorator
 
 def main():
     """
@@ -75,8 +76,8 @@ def main():
     # --- 5. Phase 4: Semantic Analysis ---
     print("[4/4] Running Semantic Analysis...")
     try:
-        analyzer = SemanticAnalyzer()
-        analyzer.visit(ast)
+        analyzer = ASTDecorator()
+        decorated_ast = analyzer.generate_decorated_ast(ast)
         
         print("      Success! No semantic errors found.")
         print("\n" + "="*50)
@@ -109,7 +110,7 @@ def main():
 
         print("\n=== Final Abstract Syntax Tree (AST) with Semantic Info ===")
 
-        print(ast)
+        print(decorated_ast)
             
     except Exception as e:
         import traceback
