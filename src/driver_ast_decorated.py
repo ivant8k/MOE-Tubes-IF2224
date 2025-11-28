@@ -3,7 +3,8 @@ import sys, os
 from lexical.lexer import Lexer, LexicalError
 from syntax.syntax import SyntaxAnalyzer, SyntaxError
 from semantic.ast_converter import ASTConverter
-from semantic.analyzer import SemanticAnalyzer
+# [UBAH]: Import ASTDecorator
+from semantic.ast_decorator import ASTDecorator
 
 def main():
     """
@@ -22,7 +23,7 @@ def main():
         sys.exit(1)
 
     # Mendapatkan path absolut ke dfa.json
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # src/syntax/
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     DFA_FILE_PATH = os.path.join(BASE_DIR, 'lexical', 'dfa.json')
 
     # --- 2. Baca Source Code ---
@@ -34,60 +35,63 @@ def main():
         sys.exit(1)
         
     # --- 3. Jalankan Lexer ---
+    print("[1/4] Running Lexer...")
     lexer = Lexer(DFA_FILE_PATH)
     tokens = []
     try:
         tokens = lexer.tokenize(source_code)
     except LexicalError as e:
         print(str(e), file=sys.stderr)
-        sys.exit(1) # Keluar jika ada error leksikal
+        sys.exit(1)
     
-    # print("\n--- Daftar Token ---")
-    # for token in tokens:
-    #     print(token)
-    # print("--------------------\n")
-
     # --- 4. Jalankan Parser ---
+    print("[2/4] Running Parser...")
     parser = SyntaxAnalyzer()
+    parser_tree = None
     try:
         parser_tree = parser.parse(tokens=tokens)
-        # print(parser_tree)
     except SyntaxError as e:
         print(e)
+        sys.exit(1)
     except Exception as e:
         print(f"\nFATAL PARSER ERROR: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         sys.exit(1)
 
-    # --- 4. Jalankan AST Converter ---
+    # --- 5. Jalankan AST Converter ---
+    print("[3/4] Converting to AST...")
+    ast = None
     try:
         converter = ASTConverter()
         ast = converter.convert(parser_tree)
-        # print("\n=== Abstract Syntax Tree (AST) ===")
-        # print(ast)
     except Exception as e:
         print(f"AST Error: {e}")
         import traceback
         traceback.print_exc()
         return
     
-    # --- 5. Phase 4: Semantic Analysis ---
-    print("[4/4] Running Semantic Analysis...")
+    # --- 6. Phase 4: Semantic Analysis & Decoration ---
+    print("[4/4] Running Semantic Analysis & AST Decoration...")
     try:
-        analyzer = SemanticAnalyzer()
-        analyzer.visit(ast)
+        # [UBAH]: Gunakan ASTDecorator menggantikan SemanticAnalyzer biasa.
+        # Karena ASTDecorator mewarisi SemanticAnalyzer, ia akan melakukan
+        # validasi semantik sekaligus mengisi atribut node untuk visualisasi.
+        decorator = ASTDecorator()
+        decorated_ast = decorator.generate_decorated_ast(ast)
         
         print("      Success! No semantic errors found.")
         print("\n" + "="*50)
         print("COMPILATION SUCCESSFUL")
         print("="*50)
         
+        # [INFO]: Gunakan 'decorator.symbol_table' untuk mengambil data tabel
+        
         # Cetak Symbol Table (Tab) - Skip dummy index 0
         print("\n>> Symbol Table (Identifier Table):")
         print(f"{'Idx':<5} | {'id':<15} | {'Obj':<10} | {'Type':<10} | {'nrm':<5} | {'Lev':<5} | {'Adr':<5} | {'link':<5}")
-        print("-" * 55)
-        for idx, entry in enumerate(analyzer.symbol_table.tab):
+        print("-" * 80)
+        for idx, entry in enumerate(decorator.symbol_table.tab):
             if idx == 0: continue # Skip dummy
             name = entry.identifier
             obj = entry.obj.value if hasattr(entry.obj, 'value') else str(entry.obj)
@@ -96,20 +100,26 @@ def main():
 
         # Cetak Block Table (BTab)
         print("\n>> Block Table (Scope Info):")
-        for idx, entry in enumerate(analyzer.symbol_table.btab):
-            if idx == 0: continue # Skip dummy global wrapper if needed
-            print(f"{idx} | {entry.last} | {entry.lpar} | {entry.psze} | {entry.vsze} |")
+        print(f"{'Idx':<5} | {'Last':<5} | {'LPar':<5} | {'PSize':<5} | {'VSize':<5}")
+        print("-" * 40)
+        for idx, entry in enumerate(decorator.symbol_table.btab):
+            if idx == 0: continue 
+            print(f"{idx:<5} | {entry.last:<5} | {entry.lpar:<5} | {entry.psze:<5} | {entry.vsze:<5}")
 
+        # Cetak Array Table (ATab)
         print("\n>> Array Table:" )
-        if len(analyzer.symbol_table.atab) == 0:
+        if len(decorator.symbol_table.atab) <= 1: # Index 0 is dummy
             print("  (empty)")
+        else:
+            for idx, entry in enumerate(decorator.symbol_table.atab):
+                if idx == 0: continue
+                print(f"Array {idx}: {entry}")
 
-        for idx, entry in enumerate(analyzer.symbol_table.atab):
-            print(f"Array {idx}: {entry}")
-
+        # Cetak Decorated AST
         print("\n=== Final Abstract Syntax Tree (AST) with Semantic Info ===")
-
-        print(ast)
+        # Karena ASTNode sudah didesain memiliki method __str__ yang membaca .type dan .symbol_entry,
+        # kita cukup print root-nya saja.
+        print(decorated_ast)
             
     except Exception as e:
         import traceback
