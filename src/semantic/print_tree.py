@@ -73,13 +73,16 @@ class ASTPrinter:
         
         if isinstance(node, ProcedureCallNode):
             args = [self._compact(a) for a in node.arguments]
-            return f"ProcedureCall(name: '{node.proc_name}', args: [{', '.join(args)}])"
+            return f"ProcedureCall(name: '{node.proc_name}', args: [{', '.join(filter(None, args))}])"
         
         if isinstance(node, AssignNode):
-            val_str = self._compact(node.value)
             target_str = self._compact(node.target) or "Target"
-            if val_str: return f"Assign(target: {target_str}, value: {val_str})"
-            return f"Assign"
+            value_str = self._compact(node.value)
+            # Jika value kompleks (None), jangan tampilkan di label
+            if value_str:
+                return f"Assign(target: {target_str}, value: {value_str})"
+            else:
+                return f"Assign(target: {target_str}, value:"
 
         if isinstance(node, BinOpNode): return f"BinOp('{node.op}')"
         if isinstance(node, UnaryOpNode): return f"UnaryOp('{node.op}')"
@@ -99,9 +102,14 @@ class ASTPrinter:
         return node.__class__.__name__.replace("Node", "")
 
     def _compact(self, node):
+        """Return compact string untuk simple nodes, None untuk complex nodes"""
+        if node is None: return None
         if isinstance(node, VarNode): return f"Var('{node.name}')"
         if isinstance(node, NumNode): return f"Num({node.value})"
         if isinstance(node, StringNode): return f"String('{node.value}')"
+        if isinstance(node, CharNode): return f"Char('{node.value}')"
+        if isinstance(node, BoolNode): return f"Bool({node.value})"
+        # Complex nodes return None agar ditampilkan sebagai child
         return None
 
     def _get_children(self, node):
@@ -113,12 +121,10 @@ class ASTPrinter:
             children.append(("Block", node.block))
             return children
 
-        # FIX: Gunakan getattr(node, 'attr', None) untuk menghindari AttributeError
-        # jika field belum ada di definisi ASTNode lama
         if isinstance(node, (ProcedureDeclNode, FunctionDeclNode)):
             params = getattr(node, 'params', [])
-            decls = getattr(node, 'declarations', []) # Safe access
-            body = getattr(node, 'body', None) or getattr(node, 'block', None) # Support old & new field name
+            decls = getattr(node, 'declarations', [])
+            body = getattr(node, 'body', None) or getattr(node, 'block', None)
 
             if params: children.append(("Params", params))
             if decls: children.append(("Declarations", decls))
@@ -126,36 +132,57 @@ class ASTPrinter:
             return children
 
         if isinstance(node, AssignNode):
-            if self._compact(node.value): return []
-            if not self._compact(node.target): children.append((None, node.target))
+            # Jika value sudah di-compact di header, jangan tampilkan children
+            if self._compact(node.value):
+                return []
+            # Jika value kompleks, tampilkan hanya value (target sudah di header)
             children.append((None, node.value))
+            return children
         
         elif isinstance(node, BinOpNode):
             children.append((None, node.left))
             children.append((None, node.right))
+            return children
             
         elif isinstance(node, UnaryOpNode):
             children.append((None, node.expr))
+            return children
             
         elif isinstance(node, IfNode):
             children.append((None, node.condition))
             children.append((None, node.true_block))
             if node.else_block: children.append((None, node.else_block))
+            return children
             
         elif isinstance(node, WhileNode):
             children.append((None, node.condition))
             children.append((None, node.body))
+            return children
             
         elif isinstance(node, ForNode):
             children.append((None, node.start_expr))
             children.append((None, node.end_expr))
             children.append((None, node.body))
+            return children
 
         elif isinstance(node, CompoundNode):
             for c in node.children:
                 children.append((None, c))
+            return children
 
         elif isinstance(node, ArrayAccessNode):
+            children.append((None, node.array))
             children.append((None, node.index))
+            return children
+
+        elif isinstance(node, ProcedureCallNode):
+            # Jika semua args sudah di-compact di header, jangan tampilkan children
+            all_compact = all(self._compact(arg) for arg in node.arguments)
+            if all_compact:
+                return []
+            # Jika ada arg kompleks, tampilkan semuanya
+            for arg in node.arguments:
+                children.append((None, arg))
+            return children
 
         return children
