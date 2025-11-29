@@ -61,14 +61,10 @@ class ASTAnalyzer:
             # Resolve struktur array dan dapatkan referensi ke atab
             type_kind, ref_idx = self._resolve_array_type(node.type_node)
         else:
-            # Tipe primitive atau named type
             type_name = node.type_node.type_name if hasattr(node.type_node, 'type_name') else str(node.type_node)
             type_kind = self._resolve_type_str(type_name)
             ref_idx = 0 
-            # Note: Jika named type merujuk ke array (TYPE A = ARRAY...), 
-            # ref_idx harus diambil dari lookup identifier tipe tersebut.
             if type_kind == TypeKind.NOTYPE:
-                # Coba lookup apakah ini Tipe Bentukan (Named Type)
                 type_entry_idx = self.symbol_table.lookup(type_name)
                 if type_entry_idx != 0:
                     entry = self.symbol_table.get_entry(type_entry_idx)
@@ -77,7 +73,6 @@ class ASTAnalyzer:
                         ref_idx = entry.ref
 
         try:
-            # add_variable sekarang menerima ref (penting untuk array)
             idx = self.symbol_table.add_variable(node.var_name, type_kind, ref=ref_idx)
             
             if idx is None:
@@ -100,7 +95,6 @@ class ASTAnalyzer:
         """
         Memproses ArrayTypeNode, mendaftarkan ke atab, dan mengembalikan (TypeKind.ARRAY, ref_index)
         """
-        # 1. Evaluate Bounds (Low & High)
         # Asumsi bounds harus constant expression
         low_val = self._get_constant_value(node.lower)
         high_val = self._get_constant_value(node.upper)
@@ -113,8 +107,6 @@ class ASTAnalyzer:
             # print(f"[Semantic Error] Array lower bound ({low_val}) > upper bound ({high_val})")
             raise ASTAnalyzerError(message=f"Array lower bound ({low_val}) > upper bound ({high_val})")
 
-        # 2. Resolve Element Type
-        # Element bisa berupa simple type atau ArrayTypeNode lain (Multidimensional)
         if isinstance(node.element_type, ArrayTypeNode):
             etyp, eref = self._resolve_array_type(node.element_type)
         else:
@@ -133,7 +125,6 @@ class ASTAnalyzer:
                         eref = entry.ref
 
         # 3. Register to ATAB
-        # Tipe index default INTEGER (bisa dikembangkan jika support char/enum index)
         xtyp = TypeKind.INTEGER 
         
         atab_idx = self.symbol_table.add_array_type(xtyp, etyp, eref, low_val, high_val)
@@ -158,8 +149,7 @@ class ASTAnalyzer:
                 entry = self.symbol_table.get_entry(idx)
                 if entry.obj == ObjectKind.CONSTANT:
                     return int(entry.adr) # Nilai konstanta disimpan di adr
-        
-        # NOTE: Bisa dikembangkan untuk handle BinOp (misal: 10 + 5)
+
         return None
 
     def visit_ConstDeclNode(self, node: ConstDeclNode):
@@ -174,7 +164,7 @@ class ASTAnalyzer:
         try:
             idx = self.symbol_table.add_constant(node.const_name, value_type, raw_value)
             
-            # ← TAMBAHKAN SAFETY CHECK
+            # SAFETY CHECK
             if idx is None:
                 # print(f"[Semantic Error] Failed to add constant '{node.const_name}'")
                 # return
@@ -201,13 +191,11 @@ class ASTAnalyzer:
         
         # 1. Cek apakah value-nya adalah Definisi Array
         if isinstance(node.value, ArrayTypeNode):
-            # Reuse logic _resolve_array_type yang sudah ada
             type_kind, ref_idx = self._resolve_array_type(node.value)
             
         # 2. Cek apakah value-nya adalah Tipe Lain (Alias, misal: TYPE Angka = Integer)
         elif isinstance(node.value, TypeNode):
             type_kind = self._resolve_type_str(node.value.type_name)
-            # Jika alias ke array yang sudah ada, perlu lookup ref-nya (opsional/advanced)
             
         try:
             # Masukkan ke Symbol Table sebagai ObjectKind.TYPE
@@ -298,11 +286,7 @@ class ASTAnalyzer:
         for name in node.names:
             try:
                 # Masukkan parameter sebagai variabel lokal
-                # Note: node.is_ref (VAR param) bisa disimpan di field nrm (0=ref, 1=normal)
                 nrm_val = 0 if node.is_ref else 1
-                
-                # Kita pakai enter manual karena add_variable default nrm=1
-                # Hitung offset (adr) manual jika perlu, atau pakai logic add_variable
                 self.symbol_table.enter(
                     name, ObjectKind.VARIABLE, type_kind, 0, nrm_val, 
                     self.symbol_table.current_level, 0
@@ -331,7 +315,6 @@ class ASTAnalyzer:
         if value_type is None: value_type = TypeKind.NOTYPE        
         # 3. Validasi Kompatibilitas
         if target_type != value_type and target_type != TypeKind.NOTYPE and value_type != TypeKind.NOTYPE:
-            # Implicit casting: Integer -> Real (OK)
             if target_type == TypeKind.REAL and value_type == TypeKind.INTEGER:
                 return
             
@@ -363,7 +346,6 @@ class ASTAnalyzer:
             # print(f"[Semantic Error] Loop variable '{node.variable}' not declared.")
             raise ASTAnalyzerError(message=f"Loop variable '{node.variable}' not declared.")
 
-        # Cek tipe expression start & end (harus integer)
         start_type = self.visit(node.start_expr)
         end_type = self.visit(node.end_expr)
         
@@ -400,7 +382,6 @@ class ASTAnalyzer:
     
     def visit_ArrayAccessNode(self, node: ArrayAccessNode) -> TypeKind:
         # 1. Periksa Variabel Array
-        # visit_VarNode akan mengembalikan tipe arraynya dan menempelkan symbol_entry
         array_type = self.visit(node.array)
         
         if array_type != TypeKind.ARRAY:
@@ -415,7 +396,6 @@ class ASTAnalyzer:
             raise ASTAnalyzerError(message=f"Array index must be INTEGER, got {index_type.name}")
 
         # 3. Ambil Tipe Elemen dari Symbol Table (atab)
-        # Kita butuh ref dari node.array (yang sudah dipasang oleh visit_VarNode)
         if not hasattr(node.array, 'symbol_entry'):
             return TypeKind.NOTYPE
 
@@ -426,7 +406,7 @@ class ASTAnalyzer:
         if entry and entry.ref > 0:
             atab_entry = self.symbol_table.atab[entry.ref]
             
-            # Validasi Range Index (Hanya bisa jika index berupa angka literal)
+            # Validasi Range Index
             if isinstance(node.index, NumNode):
                 val = int(node.index.value)
                 if val < atab_entry.low or val > atab_entry.high:
@@ -502,7 +482,6 @@ class ASTAnalyzer:
         # 2. Ambil Entry
         entry = self.symbol_table.get_entry(idx)
         
-        # 3. Dekorasi AST (Isi info tipe & entry ke Node)
         node.type = entry.type.name
         # Simpan tab_index beserta info entry lainnya
         node.symbol_entry = {
@@ -540,6 +519,6 @@ class ASTAnalyzer:
         if tn == 'BOOLEAN': return TypeKind.BOOLEAN
         if tn == 'CHAR': return TypeKind.CHAR
         if tn == 'STRING': return TypeKind.STRING
-        # Array/Record belum dihandle detail
+        # Array/Record 
         if tn == 'ARRAY' or 'ARRAY' in tn: return TypeKind.ARRAY
         return TypeKind.NOTYPE

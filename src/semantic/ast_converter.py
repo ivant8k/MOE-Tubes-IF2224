@@ -217,8 +217,7 @@ class ASTConverter:
                 stmt_part = child.children[1]
                 local_decls = self._convert_DeclarationPart(decl_part)
                 body = self.visit(stmt_part)
-                block = CompoundNode(children=body.children) # Simplified for now
-                # Idealnya simpan decls di ProcDeclNode
+                block = CompoundNode(children=body.children)
         return ProcedureDeclNode(name=name, params=params, local_vars= local_decls, block=block)
 
     def _convert_FunctionDeclaration(self, node: Node) -> FunctionDeclNode:
@@ -273,15 +272,13 @@ class ASTConverter:
         # 1. Cek Keyword VAR/VARIABEL
         first_child = node.children[0]
         first_lex = self._get_lexeme(first_child).lower()
-        
-        # Jika node VarKeywordOpt punya anak (bukan Epsilon)
+
         if isinstance(first_child, Node) and "VarKeywordOpt" in str(first_child.value):
             if first_child.children and str(first_child.children[0].value) != "EPSILON":
                 is_ref = True
 
             start_idx = 1
-            
-        # Jika struktur flat (langsung keyword 'variabel')
+
         elif first_lex in ["var", "variabel"]:
             is_ref = True
             start_idx = 1
@@ -340,7 +337,6 @@ class ASTConverter:
         
         assign_idx = -1
         for i, child in enumerate(node.children):
-            # Cek lexeme token langsung atau bungkusannya
             lex = self._get_lexeme(child)
             if lex == ":=":
                 assign_idx = i
@@ -355,7 +351,6 @@ class ASTConverter:
                 if res is not None:
                     expr = res
                 else:
-                    # Debugging bantu: Kenapa None?
                     # print(f"[WARN] Expr conversion returned None for {node.children[assign_idx+1].value}")
                     pass
 

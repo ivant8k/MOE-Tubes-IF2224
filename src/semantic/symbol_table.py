@@ -163,12 +163,12 @@ class SymbolTable:
             ("FALSE", TypeKind.BOOLEAN, 0),
         ]
 
-        # Isi dummy entries untuk reserved keywords (1-24)
+        # Isi entries untuk reserved keywords (1-24)
         for keyword in reserved_keywords:
             self.tx += 1
             self.tab.append(TabEntry(
                 identifier=keyword,
-                obj=ObjectKind.CONSTANT,  # Dummy
+                obj=ObjectKind.CONSTANT,
                 type=TypeKind.NOTYPE,
                 lev=0, adr=0
             ))
